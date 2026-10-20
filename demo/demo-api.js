@@ -114,6 +114,9 @@
     if (punched === false) return fail('not_punched', { firstName: e.first_name });
     return { ok: true, employee: e, alreadyBooked, punchChecked: punched === true };
   }
+  function removeTodaysBooking(employeeId, date) {
+    db.bookings = db.bookings.filter((b) => !(b.employee_id === employeeId && b.date === date && !b.cancelled_at && b.source === 'kiosk'));
+  }
   function addBooking(employeeId, date, time, punchChecked, source = 'kiosk', comment = null) {
     db.bookings.push({ id: db.nextId++, employee_id: employeeId, date, time, punch_checked: punchChecked ? 1 : 0, source, comment, cancelled_at: null });
   }
@@ -195,9 +198,12 @@
     // Tablet
     if (path === 'kiosk/config') return json({ sounds: db.settings.sounds_enabled !== '0' });
     if (path === 'kiosk/meal') {
-      const c = await verifyPin(body.pin, true);
+      // Demo: Test-Pins sollen beliebig oft funktionieren. Eine frühere Buchung derselben Person
+      // von heute wird gelöscht und durch die neue ersetzt (in der echten App: „Schon gebucht“).
+      const c = await verifyPin(body.pin, false);
       if (!c.ok) return json(c);
       const { date, time } = nowParts();
+      removeTodaysBooking(c.employee.id, date);
       addBooking(c.employee.id, date, time, c.punchChecked);
       save();
       return json({ ok: true, firstName: c.employee.first_name, time, punchChecked: c.punchChecked });
@@ -207,7 +213,7 @@
       if (!c.ok) return json(c);
       const token = Math.random().toString(36).slice(2);
       guestSessions.set(token, { employeeId: c.employee.id, punchChecked: c.punchChecked });
-      return json({ ok: true, token, host: { firstName: c.employee.first_name, lastName: c.employee.last_name }, alreadyBooked: c.alreadyBooked, payingCompanies: db.settings.paying_companies, reasons: db.settings.reasons });
+      return json({ ok: true, token, host: { firstName: c.employee.first_name, lastName: c.employee.last_name }, alreadyBooked: false, payingCompanies: db.settings.paying_companies, reasons: db.settings.reasons });
     }
     if (path === 'kiosk/guest/complete') {
       const s = guestSessions.get(body.token);
@@ -221,7 +227,7 @@
       const { date, time } = nowParts();
       for (const n of names) db.guests.push({ id: db.nextGuestId++, host_employee_id: s.employeeId, date, time, paying_company: company, guest_name: n, reason, source: 'kiosk', cancelled_at: null });
       let selfBooked = false;
-      if (body.includeSelf && !hasBookingOn(s.employeeId, date)) { addBooking(s.employeeId, date, time, s.punchChecked); selfBooked = true; }
+      if (body.includeSelf) { removeTodaysBooking(s.employeeId, date); addBooking(s.employeeId, date, time, s.punchChecked); selfBooked = true; }
       guestSessions.delete(body.token);
       save();
       return json({ ok: true, firstName: emp(s.employeeId).first_name, guestCount: names.length, selfBooked, payingCompany: company, reason, guests: names });
