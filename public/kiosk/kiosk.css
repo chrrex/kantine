@@ -20,6 +20,7 @@
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--font); }
 body { overflow: hidden; user-select: none; -webkit-user-select: none; }
 button { font-family: inherit; color: inherit; cursor: pointer; }
+[hidden] { display: none !important; }
 svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 #app { height: 100dvh; }
