@@ -1,0 +1,12 @@
+{
+  "name": "Kantine Liebenberg",
+  "short_name": "Kantine",
+  "start_url": "/kiosk",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#F5F5F0",
+  "theme_color": "#6B7A3E",
+  "icons": [
+    { "src": "/shared/sgl-logo.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

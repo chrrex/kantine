@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kantine · Verwaltung</title>
+<link rel="stylesheet" href="/shared/fonts.css">
+<link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+
+<!-- Login -->
+<div id="view-login" class="login-wrap" hidden>
+  <main class="login-card">
+    <img class="login-logo" src="/shared/sgl-logo.svg" alt="Schloss &amp; Gut Liebenberg">
+    <div>
+      <h1>Kantine · Verwaltung</h1>
+      <p class="muted">Nur für HR und Direktion</p>
+    </div>
+    <form id="login-form" class="stack">
+      <label class="field-label" for="login-email">E-Mail</label>
+      <input id="login-email" type="email" autocomplete="username" required>
+      <label class="field-label" for="login-password">Passwort</label>
+      <input id="login-password" type="password" autocomplete="current-password" required>
+      <p class="error" id="login-error" role="alert" hidden></p>
+      <button class="btn primary" type="submit">Anmelden</button>
+    </form>
+  </main>
+</div>
+
+<!-- App -->
+<div id="view-app" hidden>
+  <nav class="nav">
+    <div class="nav-inner">
+      <img class="nav-logo" src="/shared/sgl-logo.svg" alt="Schloss &amp; Gut Liebenberg">
+      <a href="#buchungen" data-tab="buchungen">Buchungen</a>
+      <a href="#settings" data-tab="settings">Settings</a>
+      <a href="#protokoll" data-tab="protokoll">Protokoll</a>
+      <span class="spacer"></span>
+      <span class="muted small" id="me"></span>
+      <button class="link" type="button" id="logout">Abmelden</button>
+    </div>
+  </nav>
+  <div class="banner" id="mock-banner" hidden>Testmodus: Gastromatic ist noch nicht angebunden, es werden Testdaten verwendet.</div>
+
+  <!-- Buchungen -->
+  <main class="page" id="tab-buchungen" hidden>
+    <div class="page-head">
+      <h1>Buchungen</h1>
+      <button class="btn" type="button" id="open-add">+ Buchung nachtragen</button>
+      <button class="btn primary" type="button" id="download">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Excel herunterladen
+      </button>
+    </div>
+    <section class="cards" aria-label="Status">
+      <div class="card stat"><span class="stat-label">Essen seit letztem Versand</span><span class="stat-value" id="st-meals">–</span><span class="small muted" id="st-guests"></span></div>
+      <div class="card stat"><span class="stat-label">Gastromatic-Abgleich</span><span class="stat-text" id="st-sync">–</span></div>
+      <div class="card stat"><span class="stat-label">Letzter Excel-Versand</span><span class="stat-text" id="st-export">–</span></div>
+      <div class="card stat"><span class="stat-label">Nächster Versand</span><span class="stat-text" id="st-next">–</span></div>
+    </section>
+    <form class="card filters" id="filters">
+      <div class="f"><label class="field-label" for="f-from">Von</label><input id="f-from" type="date"></div>
+      <div class="f"><label class="field-label" for="f-to">Bis</label><input id="f-to" type="date"></div>
+      <div class="f"><label class="field-label" for="f-company">Gesellschaft</label><select id="f-company"><option value="">Alle</option></select></div>
+      <div class="f"><label class="field-label" for="f-type">Art</label>
+        <select id="f-type"><option value="all">Alle</option><option value="meal">Mitarbeiter</option><option value="guest">Gäste</option></select></div>
+      <div class="f wide"><label class="field-label" for="f-q">Person suchen</label><input id="f-q" type="search" placeholder="Name oder Personalnummer"></div>
+    </form>
+    <section class="card table-wrap">
+      <table>
+        <thead><tr><th>Datum</th><th>Uhrzeit</th><th>Personalnr.</th><th>Name</th><th>Gesellschaft</th><th>Art</th><th>Vermerk</th><th><span class="sr-only">Aktion</span></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <p class="empty muted" id="rows-empty" hidden>Keine Buchungen im gewählten Zeitraum.</p>
+    </section>
+    <p class="small muted">Jede Stornierung und jeder Nachtrag braucht einen Kommentar und wird im Protokoll gespeichert.</p>
+  </main>
+
+  <!-- Settings -->
+  <main class="page" id="tab-settings" hidden>
+    <div class="page-head">
+      <h1>Settings</h1>
+      <span class="small muted" id="save-state" role="status"></span>
+      <button class="btn primary" type="button" id="save-settings">Änderungen speichern</button>
+    </div>
+    <div class="grid">
+      <section class="card stack">
+        <h2>Excel-Versand</h2>
+        <label class="field-label" for="s-send-day">Versandtag im Monat</label>
+        <select id="s-send-day"></select>
+        <span class="small muted">Die Datei enthält alle Buchungen seit dem letzten Versand bis zum Vortag.</span>
+        <div class="field-label">Empfänger</div>
+        <ul class="list" id="s-recipients"></ul>
+        <div class="row"><input id="s-recipient-new" type="email" placeholder="E-Mail-Adresse" aria-label="Neuer Empfänger"><button class="btn" type="button" data-add="recipients">Hinzufügen</button></div>
+        <div class="field-label">Absender-Postfach</div>
+        <div class="two">
+          <input id="s-smtp-host" placeholder="SMTP-Server" aria-label="SMTP-Server">
+          <input id="s-smtp-port" placeholder="Port (587)" aria-label="Port" inputmode="numeric">
+          <input id="s-smtp-user" placeholder="Benutzername" aria-label="Benutzername" autocomplete="off">
+          <input id="s-smtp-pass" type="password" placeholder="Passwort" aria-label="Passwort" autocomplete="new-password">
+          <input id="s-smtp-from" class="span2" placeholder="Absender, z. B. kantine@…" aria-label="Absender-Adresse">
+        </div>
+        <div class="row wrap"><button class="btn" type="button" id="test-mail">Testmail senden</button><button class="btn" type="button" id="send-now">Jetzt versenden</button></div>
+        <p class="small" id="mail-result" role="status"></p>
+      </section>
+
+      <section class="card stack">
+        <h2>Gastromatic</h2>
+        <p class="small muted" id="g-mode"></p>
+        <label class="field-label" for="s-g-id">Client ID</label>
+        <input id="s-g-id" autocomplete="off">
+        <label class="field-label" for="s-g-secret">Client Secret</label>
+        <input id="s-g-secret" type="password" autocomplete="new-password">
+        <div class="status-line" id="g-status"></div>
+        <div class="row wrap"><button class="btn" type="button" id="g-test">Verbindung testen</button><button class="btn" type="button" id="g-sync">Mitarbeiter jetzt abgleichen</button></div>
+        <p class="small" id="g-result" role="status"></p>
+      </section>
+
+      <section class="card stack">
+        <h2>Auswahlliste „Zahlende Firma“</h2>
+        <ul class="list" id="s-paying_companies"></ul>
+        <div class="row"><input id="s-paying_companies-new" placeholder="Neue Firma" aria-label="Neue Firma"><button class="btn" type="button" data-add="paying_companies">Hinzufügen</button></div>
+      </section>
+
+      <section class="card stack">
+        <h2>Auswahlliste „Grund“</h2>
+        <ul class="list" id="s-reasons"></ul>
+        <div class="row"><input id="s-reasons-new" placeholder="Neuer Grund" aria-label="Neuer Grund"><button class="btn" type="button" data-add="reasons">Hinzufügen</button></div>
+        <span class="small muted">„Sonstiges“ mit Freitext steht immer zur Auswahl.</span>
+      </section>
+
+      <section class="card stack">
+        <h2>Benutzer Admin-Bereich</h2>
+        <ul class="list" id="users"></ul>
+        <form id="user-form" class="stack">
+          <div class="two">
+            <input id="u-name" placeholder="Name" aria-label="Name">
+            <input id="u-email" type="email" placeholder="E-Mail-Adresse" aria-label="E-Mail-Adresse" required>
+            <input id="u-pass" class="span2" type="password" placeholder="Startpasswort (mind. 10 Zeichen)" aria-label="Startpasswort" autocomplete="new-password" required>
+          </div>
+          <button class="btn" type="submit">Benutzer anlegen</button>
+          <p class="small error" id="user-error" role="alert" hidden></p>
+        </form>
+        <details>
+          <summary class="small">Eigenes Passwort ändern</summary>
+          <form id="pw-form" class="stack pad-top">
+            <input id="pw-current" type="password" placeholder="Aktuelles Passwort" aria-label="Aktuelles Passwort" autocomplete="current-password">
+            <input id="pw-next" type="password" placeholder="Neues Passwort (mind. 10 Zeichen)" aria-label="Neues Passwort" autocomplete="new-password">
+            <button class="btn" type="submit">Passwort ändern</button>
+            <p class="small" id="pw-result" role="status"></p>
+          </form>
+        </details>
+      </section>
+
+      <section class="card stack">
+        <h2>Tablet und Datenschutz</h2>
+        <div class="field-label">Freischalt-Link für das Kantinen-Tablet</div>
+        <div class="row"><input id="kiosk-url" readonly aria-label="Freischalt-Link"><button class="btn" type="button" id="copy-kiosk">Kopieren</button></div>
+        <span class="small muted">Einmal auf dem Tablet öffnen, danach als App zum Startbildschirm hinzufügen. Link nicht weitergeben.</span>
+        <label class="check"><input type="checkbox" id="s-sounds"> Töne am Tablet</label>
+        <label class="field-label" for="s-retention">Buchungen und Gästedaten löschen nach (Monaten)</label>
+        <input id="s-retention" type="number" min="1" max="120">
+        <span class="small muted">Sperre nach 5 falschen Pins für 1 Minute.</span>
+      </section>
+    </div>
+  </main>
+
+  <!-- Protokoll -->
+  <main class="page" id="tab-protokoll" hidden>
+    <div class="page-head"><h1>Protokoll</h1></div>
+    <section class="card table-wrap">
+      <table>
+        <thead><tr><th>Zeitpunkt (UTC)</th><th>Wer</th><th>Aktion</th><th>Details</th></tr></thead>
+        <tbody id="audit-rows"></tbody>
+      </table>
+    </section>
+  </main>
+</div>
+
+<!-- Dialog: Buchung nachtragen -->
+<dialog id="dlg-add">
+  <form method="dialog" id="add-form" class="stack">
+    <h2>Buchung nachtragen</h2>
+    <label class="field-label" for="add-search">Mitarbeiter</label>
+    <input id="add-search" type="search" placeholder="Name oder Personalnummer" autocomplete="off">
+    <ul class="pick" id="add-results"></ul>
+    <p class="small" id="add-picked"></p>
+    <div class="two">
+      <div class="stack"><label class="field-label" for="add-date">Datum</label><input id="add-date" type="date" required></div>
+      <div class="stack"><label class="field-label" for="add-time">Uhrzeit</label><input id="add-time" type="time" value="12:00"></div>
+    </div>
+    <label class="field-label" for="add-comment">Kommentar (Pflicht)</label>
+    <input id="add-comment" required placeholder="z. B. Tablet war defekt">
+    <p class="error small" id="add-error" role="alert" hidden></p>
+    <div class="row end"><button class="btn" type="button" data-close>Abbrechen</button><button class="btn primary" type="submit" value="ok">Nachtragen</button></div>
+  </form>
+</dialog>
+
+<!-- Dialog: Stornieren -->
+<dialog id="dlg-cancel">
+  <form method="dialog" id="cancel-form" class="stack">
+    <h2>Buchung stornieren</h2>
+    <p id="cancel-what"></p>
+    <label class="field-label" for="cancel-comment">Kommentar (Pflicht)</label>
+    <input id="cancel-comment" required placeholder="z. B. Doppelt gebucht">
+    <p class="error small" id="cancel-error" role="alert" hidden></p>
+    <div class="row end"><button class="btn" type="button" data-close>Abbrechen</button><button class="btn danger" type="submit" value="ok">Stornieren</button></div>
+  </form>
+</dialog>
+
+<script src="/admin/admin.js"></script>
+</body>
+</html>
