@@ -1,0 +1,53 @@
+'use strict';
+/**
+ * Baut die Klick-Demo für GitHub Pages nach docs/.
+ * Gleiche Oberfläche wie die App, aber statt Server ein Simulator im Browser (demo/demo-api.js).
+ * Aufruf: npm run build:demo
+ */
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.join(__dirname, '..');
+const out = path.join(root, 'docs');
+const pub = path.join(root, 'public');
+
+fs.rmSync(out, { recursive: true, force: true });
+fs.mkdirSync(out, { recursive: true });
+
+for (const dir of ['shared', 'kiosk', 'admin']) {
+  fs.cpSync(path.join(pub, dir), path.join(out, dir), { recursive: true });
+}
+fs.rmSync(path.join(out, 'kiosk', 'manifest.webmanifest'), { force: true });
+
+fs.mkdirSync(path.join(out, 'demo'), { recursive: true });
+fs.copyFileSync(path.join(root, 'demo', 'demo-api.js'), path.join(out, 'demo', 'demo-api.js'));
+fs.copyFileSync(path.join(root, 'demo', 'demo.css'), path.join(out, 'demo', 'demo.css'));
+fs.copyFileSync(path.join(root, 'demo', 'index.html'), path.join(out, 'index.html'));
+fs.copyFileSync(path.join(root, 'demo', 'dkb-stiftung-logo.jpg'), path.join(out, 'demo', 'dkb-stiftung-logo.jpg'));
+fs.copyFileSync(require.resolve('exceljs/dist/exceljs.min.js'), path.join(out, 'demo', 'exceljs.min.js'));
+fs.writeFileSync(path.join(out, '.nojekyll'), '');
+
+// Absolute Pfade in relative umschreiben (GitHub Pages liegt unter /kantine/)
+function rewriteHtml(file, own) {
+  let html = fs.readFileSync(file, 'utf8');
+  html = html
+    .replaceAll('href="/shared/', 'href="../shared/')
+    .replaceAll('src="/shared/', 'src="../shared/')
+    .replaceAll(`href="/${own}/`, 'href="./')
+    .replaceAll(`src="/${own}/`, 'src="./')
+    .replace(/\s*<link rel="manifest"[^>]*>/, '');
+  // Simulator vor den App-Skripten laden
+  html = html.replace(
+    /<script src="\.\/(kiosk|admin)\.js"><\/script>/,
+    (m) => `<link rel="stylesheet" href="../demo/demo.css">\n<script src="../demo/demo-api.js"></script>\n${m}`,
+  );
+  html = html.replace('<title>', '<title>DEMO · ');
+  fs.writeFileSync(file, html);
+}
+rewriteHtml(path.join(out, 'kiosk', 'index.html'), 'kiosk');
+rewriteHtml(path.join(out, 'admin', 'index.html'), 'admin');
+
+const fontsCss = path.join(out, 'shared', 'fonts.css');
+fs.writeFileSync(fontsCss, fs.readFileSync(fontsCss, 'utf8').replaceAll("url('/shared/fonts/", "url('fonts/"));
+
+console.log('Demo gebaut: docs/');

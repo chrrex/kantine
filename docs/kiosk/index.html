@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#F5F5F0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>DEMO · Kantine · Schloss &amp; Gut Liebenberg</title>
+<link rel="stylesheet" href="../shared/fonts.css">
+<link rel="stylesheet" href="./kiosk.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- 1 · Start: Pin-Eingabe (auch für Gäste-Pin genutzt) -->
+  <section class="screen" id="screen-pin" data-active>
+    <header class="topbar">
+      <img class="logo" src="../shared/sgl-logo.svg" alt="Schloss &amp; Gut Liebenberg" data-mode="meal">
+      <button class="back" type="button" data-action="cancel" data-mode="guest">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Abbrechen
+      </button>
+      <div class="date" id="today"></div>
+    </header>
+    <main class="pin-layout">
+      <div class="pin-intro">
+        <div class="guest-icon" data-mode="guest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M19 8v6M16 11h6"/></svg></div>
+        <h1 data-mode="meal">Mittagessen<br>buchen</h1>
+        <h1 data-mode="guest">Gäste einladen</h1>
+        <p class="lead" data-mode="meal">Gib deinen Terminal-Pin ein</p>
+        <p class="lead" data-mode="guest">Gib zuerst deinen Terminal-Pin ein.<br>Du wirst als einladende Person eingetragen.</p>
+        <div class="dots" id="dots" role="status" aria-live="polite"></div>
+        <button class="guest-button" type="button" data-action="guest" data-mode="meal">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M19 8v6M16 11h6"/></svg>
+          Gäste einladen
+        </button>
+      </div>
+      <div class="keypad" aria-label="Ziffernfeld">
+        <button type="button" data-digit="1">1</button><button type="button" data-digit="2">2</button><button type="button" data-digit="3">3</button>
+        <button type="button" data-digit="4">4</button><button type="button" data-digit="5">5</button><button type="button" data-digit="6">6</button>
+        <button type="button" data-digit="7">7</button><button type="button" data-digit="8">8</button><button type="button" data-digit="9">9</button>
+        <button type="button" class="key-del" data-action="delete" aria-label="Löschen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 5H9l-6 7 6 7h12z"/><path d="M17 9l-6 6M11 9l6 6"/></svg></button>
+        <button type="button" data-digit="0">0</button>
+        <button type="button" class="key-ok" data-action="submit" aria-label="Bestätigen" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button>
+      </div>
+    </main>
+  </section>
+
+  <!-- 2/3 · Ergebnis (grün/rot) -->
+  <section class="screen result" id="screen-result" aria-live="assertive">
+    <div class="result-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="icon-ok" d="M4 12l5 5L20 6"/><path class="icon-err" d="M6 6l12 12M18 6L6 18"/></svg></div>
+    <h1 id="result-title"></h1>
+    <p id="result-text"></p>
+    <dl class="summary" id="result-summary" hidden></dl>
+    <button type="button" class="retry" data-action="home" id="result-retry" hidden>Nochmal versuchen</button>
+    <div class="countdown"><div class="countdown-bar" id="countdown-bar"></div></div>
+  </section>
+
+  <!-- 5 · Gäste-Formular -->
+  <section class="screen" id="screen-guest">
+    <header class="topbar">
+      <h1 class="topbar-title">Gäste einladen</h1>
+      <div class="host">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 16 0v1"/></svg>
+        Eingeladen von <strong id="host-name"></strong>
+      </div>
+    </header>
+    <form class="guest-form" id="guest-form" novalidate>
+      <div class="col">
+        <fieldset>
+          <legend>Zahlende Firma</legend>
+          <div class="chips" id="company-chips"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Grund</legend>
+          <div class="chips" id="reason-chips"></div>
+          <div class="other" id="reason-other-wrap" hidden>
+            <label for="reason-other">Grund eingeben</label>
+            <input id="reason-other" type="text" maxlength="200" autocomplete="off">
+          </div>
+        </fieldset>
+      </div>
+      <div class="col">
+        <fieldset>
+          <legend>Gäste</legend>
+          <div id="guest-list" class="guest-list"></div>
+          <button type="button" class="add-guest" data-action="add-guest">+ weiteren Gast hinzufügen</button>
+        </fieldset>
+        <label class="self" id="self-wrap">
+          <input type="checkbox" id="self" checked>
+          <span class="self-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span>
+          <span class="self-text">
+            <strong>Mein eigenes Essen mitbuchen</strong>
+            <span id="self-hint">Antippen zum Abwählen, falls du heute nicht mitisst</span>
+          </span>
+        </label>
+      </div>
+    </form>
+    <footer class="bottombar">
+      <button type="button" class="secondary" data-action="cancel">Abbrechen</button>
+      <button type="button" class="primary" id="guest-submit" data-action="submit-guests" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg><span id="guest-submit-label">Buchen</span>
+      </button>
+    </footer>
+  </section>
+
+</div>
+<link rel="stylesheet" href="../demo/demo.css">
+<script src="../demo/demo-api.js"></script>
+<script src="./kiosk.js"></script>
+</body>
+</html>

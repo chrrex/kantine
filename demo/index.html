@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kantinen-App · Demo</title>
+<link rel="stylesheet" href="shared/fonts.css">
+<style>
+  :root { --green: #6B7A3E; --green-text: #4F5A2C; --green-tint: #E6E9D8; --ink: #1F2419; --muted: #4A4D44; --line: #D3D4C8; --bg: #F5F5F0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Source Sans 3', Arial, sans-serif; }
+  header { background: #fff; border-bottom: 1px solid var(--line); }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+  header .wrap { display: flex; align-items: center; gap: 24px; padding-top: 16px; padding-bottom: 16px; }
+  header img { height: 64px; }
+  main.wrap { padding-top: 40px; padding-bottom: 64px; display: flex; flex-direction: column; gap: 32px; }
+  h1 { margin: 0; font-size: clamp(32px, 5vw, 44px); line-height: 1.1; }
+  .lead { margin: 12px 0 0; font-size: 20px; font-weight: 300; color: var(--muted); max-width: 720px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; gap: 12px; }
+  .card h2 { margin: 0; font-size: 24px; }
+  .card p { margin: 0; color: var(--muted); font-size: 17px; }
+  .btn { margin-top: 8px; align-self: flex-start; display: inline-flex; align-items: center; height: 52px; padding: 0 24px; border-radius: 12px; background: var(--green); color: #fff; text-decoration: none; font-size: 18px; font-weight: 700; }
+  .btn.secondary { background: #fff; color: var(--green-text); border: 2px solid var(--green); }
+  table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid #E6E6DE; font-size: 16px; }
+  th { font-size: 14px; color: var(--muted); }
+  td.pin { font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 2px; }
+  h3 { margin: 0 0 12px; font-size: 20px; }
+  .note { font-size: 15px; color: var(--muted); }
+  code { background: var(--green-tint); padding: 2px 6px; border-radius: 4px; }
+  footer { background: #fff; border-top: 1px solid var(--line); }
+  footer .wrap { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-top: 24px; padding-bottom: 24px; flex-wrap: wrap; }
+  footer img.sgl { height: 56px; } footer .dkb { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); } footer .dkb img { height: 36px; }
+  button.reset { font: inherit; font-size: 15px; background: none; border: 0; color: var(--green-text); text-decoration: underline; cursor: pointer; padding: 0; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><img src="shared/sgl-logo.svg" alt="Schloss &amp; Gut Liebenberg"></div></header>
+<main class="wrap">
+  <section>
+    <h1>Kantinen-App · Demo</h1>
+    <p class="lead">Mittagessen per Terminal-Pin erfassen, Gäste eintragen, monatliche Excel an HR. Diese Demo läuft komplett im Browser mit Testdaten – Gastromatic und Mailversand werden nur simuliert.</p>
+  </section>
+
+  <div class="cards">
+    <div class="card">
+      <h2>Kantinen-Tablet</h2>
+      <p>Die Ansicht für das Tablet in der Kantine. Am besten im Querformat oder im großen Browserfenster öffnen.</p>
+      <a class="btn" href="kiosk/">Tablet öffnen</a>
+    </div>
+    <div class="card">
+      <h2>Verwaltung</h2>
+      <p>Buchungen, Storno und Nachtrag, Excel-Download und Settings für HR und Direktion.</p>
+      <p>Zugang: <code>demo@liebenberg.de</code> · <code>kantine-demo</code></p>
+      <a class="btn secondary" href="admin/">Verwaltung öffnen</a>
+    </div>
+  </div>
+
+  <section>
+    <h3>Test-Pins</h3>
+    <table>
+      <thead><tr><th>Pin</th><th>Person</th><th>Ergebnis</th></tr></thead>
+      <tbody>
+        <tr><td class="pin">1111</td><td>Anna Becker</td><td>Essen wird gebucht</td></tr>
+        <tr><td class="pin">2222</td><td>Ben Schulz</td><td>Essen wird gebucht</td></tr>
+        <tr><td class="pin">3333</td><td>Clara Wagner</td><td>Essen wird gebucht (andere Gesellschaft)</td></tr>
+        <tr><td class="pin">4444</td><td>David Klein</td><td>Fehler: kein aktives Profil</td></tr>
+        <tr><td class="pin">5555</td><td>Emma Hoffmann</td><td>Fehler: heute nicht eingestempelt</td></tr>
+        <tr><td class="pin">6666</td><td>Felix Richter</td><td>Gastromatic nicht erreichbar → wird gebucht mit Vermerk</td></tr>
+        <tr><td class="pin">7777</td><td>Greta Neumann</td><td>Fehler: ausgeschieden</td></tr>
+        <tr><td class="pin">9999</td><td>–</td><td>Fehler: Pin unbekannt (5× falsch sperrt für 1 Minute)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <p class="note">Jede Person, die diesen Link öffnet, hat ihre eigenen Testdaten. Tablet und Verwaltung im selben Browser teilen sich die Daten – was am Tablet gebucht wird, erscheint sofort in der Verwaltung.
+    <button class="reset" type="button" onclick="localStorage.removeItem('kantine-demo-v1'); this.textContent = 'Testdaten zurückgesetzt';">Testdaten zurücksetzen</button></p>
+</main>
+<footer><div class="wrap"><img class="sgl" src="shared/sgl-logo.svg" alt="Schloss &amp; Gut Liebenberg"><div class="dkb">Ein Wirkungsort der <img src="demo/dkb-stiftung-logo.jpg" alt="DKB STIFTUNG"></div></div></footer>
+</body>
+</html>

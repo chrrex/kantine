@@ -1,0 +1,7 @@
+.demo-bar {
+  font-family: 'Source Sans 3', Arial, sans-serif; font-size: 14px; font-weight: 600;
+  background: #1F2419; color: #FFFFFF; padding: 8px 16px; text-align: center;
+}
+.demo-bar a { color: #FFFFFF; }
+/* Am Tablet: klein unten links, damit die Vollbild-Ansicht frei bleibt */
+#app ~ .demo-bar { position: fixed; left: 12px; bottom: 20px; border-radius: 8px; opacity: .85; z-index: 10; }

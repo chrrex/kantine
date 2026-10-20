@@ -157,9 +157,21 @@
   $('filters').addEventListener('input', () => { clearTimeout(filterTimer); filterTimer = setTimeout(loadBookings, 250); });
   $('filters').addEventListener('submit', (e) => e.preventDefault());
 
-  $('download').addEventListener('click', () => {
+  $('download').addEventListener('click', async () => {
     const p = new URLSearchParams({ from: $('f-from').value, to: $('f-to').value });
-    location.href = `/api/admin/export.xlsx?${p}`;
+    const res = await fetch(`/api/admin/export.xlsx?${p}`, { credentials: 'same-origin' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || 'Download fehlgeschlagen.');
+      return;
+    }
+    const name = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'Kantine.xlsx';
+    const url = URL.createObjectURL(await res.blob());
+    const a = h('a', { href: url, download: name });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   });
 
   // Stornieren

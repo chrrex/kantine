@@ -4,6 +4,10 @@ Mitarbeitende buchen ihr Mittagessen am Tablet in der Kantine mit ihrem **Gastro
 
 Grundlage: Lastenheft und Wireframes (Oktober 2026).
 
+## Klick-Demo
+
+Online ohne Server ausprobieren: **https://chrrex.github.io/kantine/** (gleiche Oberfläche, Testdaten nur im eigenen Browser, Gastromatic und Mailversand simuliert). Die Demo liegt in `docs/` und wird mit `npm run build:demo` aus `public/` und `demo/` neu gebaut.
+
 ## Bestandteile
 
 | Bereich | Adresse | Wer |
