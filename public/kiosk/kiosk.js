@@ -2,7 +2,7 @@
 (() => {
   const app = document.getElementById('app');
   const $ = (id) => document.getElementById(id);
-  const screens = { pin: $('screen-pin'), result: $('screen-result'), guest: $('screen-guest') };
+  const screens = { pin: $('screen-pin'), result: $('screen-result'), guest: $('screen-guest'), privacy: $('screen-privacy') };
 
   const MAX_PIN = 12;
   const MIN_DOTS = 4;
@@ -11,6 +11,7 @@
   const GUEST_DONE_MS = 5000;
   const PIN_IDLE_MS = 20000;   // halb eingetippter Pin verfällt
   const FORM_IDLE_MS = 180000; // Gäste-Formular verfällt nach 3 Minuten ohne Eingabe
+  const PRIVACY_IDLE_MS = 120000; // Datenschutzhinweise schließen nach 2 Minuten ohne Bedienung
 
   const state = { mode: 'meal', pin: '', busy: false, guest: null, timers: {} };
 
@@ -328,6 +329,28 @@
     }
   }
 
+  // ---------- Datenschutzhinweise ----------
+  let privacyLoaded = false;
+  async function openPrivacy() {
+    if (state.busy) return;
+    resetPin();
+    show('privacy');
+    $('privacy-scroll').scrollTop = 0;
+    setTimer('privacyIdle', PRIVACY_IDLE_MS, goHome);
+    if (privacyLoaded) return;
+    try {
+      const res = await fetch(new URL('../shared/datenschutz.html', location.href.replace(/\/kiosk\/?(\?.*)?$/, '/kiosk/')));
+      const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+      const article = doc.getElementById('privacy-content');
+      if (!article) throw new Error('missing');
+      $('privacy-body').replaceChildren(document.importNode(article, true));
+      privacyLoaded = true;
+    } catch {
+      $('privacy-body').textContent = 'Die Datenschutzhinweise konnten nicht geladen werden. Bitte wende dich an HR.';
+    }
+  }
+  $('privacy-scroll').addEventListener('scroll', () => setTimer('privacyIdle', PRIVACY_IDLE_MS, goHome), { passive: true });
+
   // ---------- Ereignisse ----------
   document.addEventListener('click', (e) => {
     const t = e.target.closest('button');
@@ -339,6 +362,8 @@
       case 'guest': return startGuestPin();
       case 'cancel': return goHome();
       case 'home': return goHome();
+      case 'privacy': return openPrivacy();
+      case 'privacy-close': return goHome();
       case 'add-guest': return addGuestRow(true);
       case 'submit-guests': return submitGuests();
       default:

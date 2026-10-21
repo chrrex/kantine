@@ -10,6 +10,7 @@
 <title>Kantine · Schloss &amp; Gut Liebenberg</title>
 <link rel="stylesheet" href="/shared/fonts.css">
 <link rel="stylesheet" href="/kiosk/kiosk.css">
+<link rel="stylesheet" href="/shared/datenschutz.css">
 </head>
 <body>
 <div id="app">
@@ -21,7 +22,12 @@
       <button class="back" type="button" data-action="cancel" data-mode="guest">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Abbrechen
       </button>
-      <div class="date" id="today"></div>
+      <div class="topbar-right">
+        <button class="privacy-button" type="button" data-action="privacy">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Datenschutz
+        </button>
+        <div class="date" id="today"></div>
+      </div>
     </header>
     <main class="pin-layout">
       <div class="pin-intro">
@@ -55,6 +61,19 @@
     <dl class="summary" id="result-summary" hidden></dl>
     <button type="button" class="retry" data-action="home" id="result-retry" hidden>Nochmal versuchen</button>
     <div class="countdown"><div class="countdown-bar" id="countdown-bar"></div></div>
+  </section>
+
+  <!-- Datenschutzhinweise -->
+  <section class="screen privacy-screen" id="screen-privacy" aria-labelledby="privacy-title">
+    <header class="topbar">
+      <h1 class="topbar-title" id="privacy-title">Datenschutz</h1>
+      <button class="back" type="button" data-action="privacy-close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>Schließen
+      </button>
+    </header>
+    <div class="privacy-scroll" id="privacy-scroll" tabindex="0">
+      <div class="privacy-inner" id="privacy-body"><p class="privacy">Wird geladen …</p></div>
+    </div>
   </section>
 
   <!-- 5 · Gäste-Formular -->

@@ -47,6 +47,13 @@ function rewriteHtml(file, own) {
 rewriteHtml(path.join(out, 'kiosk', 'index.html'), 'kiosk');
 rewriteHtml(path.join(out, 'admin', 'index.html'), 'admin');
 
+const privacy = path.join(out, 'shared', 'datenschutz.html');
+fs.writeFileSync(privacy, fs.readFileSync(privacy, 'utf8').replaceAll('href="/shared/', 'href="./'));
+for (const f of ['admin/index.html']) {
+  const file = path.join(out, f);
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replaceAll('href="/shared/datenschutz.html"', 'href="../shared/datenschutz.html"'));
+}
+
 const fontsCss = path.join(out, 'shared', 'fonts.css');
 fs.writeFileSync(fontsCss, fs.readFileSync(fontsCss, 'utf8').replaceAll("url('/shared/fonts/", "url('fonts/"));
 

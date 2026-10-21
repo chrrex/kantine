@@ -184,3 +184,15 @@ input[type="text"]:focus { outline: 3px solid var(--green); outline-offset: 1px;
 .primary:disabled { opacity: .4; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* Datenschutz */
+.topbar-right { display: flex; align-items: center; gap: 24px; }
+.privacy-button {
+  height: 52px; padding: 0 20px; border-radius: 12px; border: 2px solid var(--line); background: var(--white);
+  display: inline-flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 600; color: var(--green-text);
+}
+.privacy-button svg { width: 24px; height: 24px; }
+.privacy-scroll { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; user-select: text; -webkit-user-select: text; }
+.privacy-inner { max-width: 820px; margin: 0 auto; padding: 28px clamp(24px, 4vw, 48px) 64px; }
+.privacy-inner .privacy h1 { display: none; }
+@media (max-width: 760px) { .date { display: none; } }
