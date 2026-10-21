@@ -60,4 +60,16 @@ for (const f of ['admin/index.html']) {
 const fontsCss = path.join(out, 'shared', 'fonts.css');
 fs.writeFileSync(fontsCss, fs.readFileSync(fontsCss, 'utf8').replaceAll("url('/shared/fonts/", "url('fonts/"));
 
+// Versionsnummer an alle eigenen Skripte und Stylesheets hängen, damit Browser nach einem
+// Update nie alte und neue Dateien mischen (GitHub Pages lässt bis zu 10 Minuten zwischenspeichern).
+const version = Date.now().toString(36);
+for (const f of ['index.html', 'kiosk/index.html', 'admin/index.html', 'shared/datenschutz.html']) {
+  const file = path.join(out, f);
+  const html = fs.readFileSync(file, 'utf8').replace(/((?:src|href)="(?!https?:|#)[^"?]+\.(?:js|css))"/g, `$1?v=${version}"`);
+  fs.writeFileSync(file, html);
+}
+// Auch der Standardtext wird mit Version geladen
+const api = path.join(out, 'demo', 'demo-api.js');
+fs.writeFileSync(api, fs.readFileSync(api, 'utf8').replace('privacy-default.txt`', `privacy-default.txt?v=${version}\``));
+
 console.log('Demo gebaut: docs/');

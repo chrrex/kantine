@@ -26,7 +26,8 @@ app.use(express.json({ limit: '50kb' }));
 app.use('/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
 const publicDir = path.join(__dirname, 'public');
-app.use('/shared', express.static(path.join(publicDir, 'shared'), { maxAge: '7d' }));
+app.use('/shared/fonts', express.static(path.join(publicDir, 'shared', 'fonts'), { maxAge: '30d', immutable: true }));
+app.use('/shared', express.static(path.join(publicDir, 'shared')));
 app.use('/kiosk', express.static(path.join(publicDir, 'kiosk'), { index: false, redirect: false }));
 app.use(require('./src/routes-kiosk'));
 app.use(require('./src/routes-admin'));

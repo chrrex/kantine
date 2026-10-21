@@ -394,9 +394,12 @@
     $('privacy-count').textContent = `${t.length.toLocaleString('de-DE')} von 20.000 Zeichen`;
   }
   async function loadPrivacy() {
-    const r = await api('/api/privacy');
-    if (!r.ok) return;
-    $('privacy-text').value = r.text || '';
+    let r = await api('/api/privacy').catch(() => ({ ok: false }));
+    if (!r.ok || !r.text) {
+      $('privacy-result').textContent = 'Der aktuelle Text konnte nicht geladen werden. Bitte die Seite neu laden.';
+      return;
+    }
+    $('privacy-text').value = r.text;
     privacyDirty = false;
     $('privacy-result').textContent = r.custom
       ? 'Angezeigt wird der aktuell gültige Text.'
