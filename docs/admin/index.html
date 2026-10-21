@@ -6,6 +6,7 @@
 <title>DEMO · Kantine · Verwaltung</title>
 <link rel="stylesheet" href="../shared/fonts.css">
 <link rel="stylesheet" href="./admin.css">
+<link rel="stylesheet" href="../shared/datenschutz.css">
 </head>
 <body>
 
@@ -164,6 +165,29 @@
         <input id="s-retention" type="number" min="1" max="120">
         <span class="small muted">Sperre nach 5 falschen Pins für 1 Minute.</span>
       </section>
+
+      <section class="card stack privacy-edit">
+        <h2>Datenschutzhinweise</h2>
+        <p class="small muted">Dieser Text erscheint am Tablet hinter dem Button „Datenschutz“ und unter dem Link „Datenschutz“. Formatierung:
+          <code>#</code> Titel · <code>##</code> Zwischenüberschrift · <code>-</code> Aufzählung · <code>&gt;</code> Hinweisbox · Leerzeile = neuer Absatz.</p>
+        <div class="privacy-columns">
+          <div class="stack">
+            <label class="field-label" for="privacy-text">Text</label>
+            <textarea id="privacy-text" rows="22" spellcheck="true"></textarea>
+            <span class="small muted" id="privacy-count"></span>
+          </div>
+          <div class="stack">
+            <div class="field-label">Vorschau</div>
+            <div class="privacy-preview" id="privacy-preview"></div>
+          </div>
+        </div>
+        <div class="row wrap">
+          <button class="btn primary" type="button" id="privacy-save">Datenschutzhinweise speichern</button>
+          <button class="btn" type="button" id="privacy-reset">Standardtext wiederherstellen</button>
+          <a class="small" href="../shared/datenschutz.html" target="_blank" rel="noopener">Ansicht öffnen</a>
+        </div>
+        <p class="small" id="privacy-result" role="status"></p>
+      </section>
     </div>
   </main>
 
@@ -210,6 +234,7 @@
   </form>
 </dialog>
 
+<script src="../shared/privacy-render.js"></script>
 <link rel="stylesheet" href="../demo/demo.css">
 <script src="../demo/demo-api.js"></script>
 <script src="./admin.js"></script>

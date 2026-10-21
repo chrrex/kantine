@@ -129,6 +129,7 @@
     });
   }
   const scriptBase = document.currentScript.src.replace(/[^/]+$/, '');
+  const realFetch = window.fetch.bind(window);
 
   async function buildWorkbook(from, to) {
     await loadScript(`${scriptBase}exceljs.min.js`);
@@ -231,6 +232,13 @@
       guestSessions.delete(body.token);
       save();
       return json({ ok: true, firstName: emp(s.employeeId).first_name, guestCount: names.length, selfBooked, payingCompany: company, reason, guests: names });
+    }
+
+    // Datenschutzhinweise
+    if (path === 'privacy') {
+      if (db.settings.privacy_text) return json({ ok: true, text: db.settings.privacy_text, custom: true });
+      const res = await realFetch(`${scriptBase}../shared/privacy-default.txt`);
+      return json({ ok: true, text: await res.text(), custom: false });
     }
 
     // Admin: Anmeldung
@@ -346,6 +354,17 @@
       audit(me.email, 'gastromatic_sync'); save();
       return json({ ok: true, companies: db.companies.length, employees: db.employees.length, withPin: db.employees.length });
     }
+    if (path === 'admin/privacy' && method === 'PUT') {
+      const t = String(body.text ?? '');
+      if (!t.trim()) return bad('Der Text darf nicht leer sein.');
+      if (t.length > 20000) return bad('Der Text ist zu lang (max. 20000 Zeichen).');
+      db.settings.privacy_text = t; audit(me.email, 'privacy_changed'); save();
+      return json({ ok: true });
+    }
+    if (path === 'admin/privacy' && method === 'DELETE') {
+      db.settings.privacy_text = ''; audit(me.email, 'privacy_reset'); save();
+      return json({ ok: true });
+    }
     if (path === 'admin/users' && method === 'GET') return json({ ok: true, rows: db.users.map(({ password, ...u }) => u), me: me.id });
     if (path === 'admin/users' && method === 'POST') {
       const email = clean(body.email, 200);
@@ -374,7 +393,6 @@
   }
 
   // ---------- fetch abfangen ----------
-  const realFetch = window.fetch.bind(window);
   window.fetch = async (input, init = {}) => {
     const url = new URL(typeof input === 'string' ? input : input.url, location.href);
     const m = url.pathname.match(/\/api\/(.+)$/);

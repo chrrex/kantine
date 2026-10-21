@@ -339,12 +339,11 @@
     setTimer('privacyIdle', PRIVACY_IDLE_MS, goHome);
     if (privacyLoaded) return;
     try {
-      const res = await fetch(new URL('../shared/datenschutz.html', location.href.replace(/\/kiosk\/?(\?.*)?$/, '/kiosk/')));
-      const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-      const article = doc.getElementById('privacy-content');
-      if (!article) throw new Error('missing');
-      $('privacy-body').replaceChildren(document.importNode(article, true));
+      const res = await fetch('/api/privacy', { credentials: 'same-origin' });
+      const data = await res.json();
+      window.renderPrivacy(data.text, $('privacy-body'));
       privacyLoaded = true;
+      setTimeout(() => { privacyLoaded = false; }, 10 * 60 * 1000); // Änderungen aus dem Admin spätestens nach 10 Minuten
     } catch {
       $('privacy-body').textContent = 'Die Datenschutzhinweise konnten nicht geladen werden. Bitte wende dich an HR.';
     }

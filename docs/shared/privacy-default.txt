@@ -1,0 +1,53 @@
+> Entwurf – vor dem Start von der bzw. dem Datenschutzbeauftragten prüfen lassen und die Angaben in eckigen Klammern ergänzen.
+
+# Datenschutzhinweise zur Kantinen-App
+
+Hier erfährst du, welche Daten die Kantinen-App über dich speichert, wofür und wie lange.
+
+## Wer ist verantwortlich?
+
+DKB Stiftung Schloss Liebenberg GmbH, [Anschrift]
+Datenschutzbeauftragte/r: [Name, E-Mail]
+
+## Wofür werden die Daten verarbeitet?
+
+- um zu erfassen, wer in der Kantine zu Mittag gegessen hat,
+- um Gästeessen der richtigen Firma zuzuordnen,
+- damit HR und das Steuerbüro die Mitarbeiteressen lohnsteuerlich abrechnen können (Sachbezug).
+
+## Welche Daten werden gespeichert?
+
+- Aus Gastromatic: Name, Personalnummer, Gesellschaft, ob du aktiv beschäftigt bist und dein Terminal-Pin. Der Pin wird nur verschlüsselt (als Hash) gespeichert, nie im Klartext.
+- Optional, wenn die Stempelprüfung eingeschaltet ist: ob du heute eingestempelt warst – nur ja oder nein, keine Arbeitszeiten.
+- Deine Buchungen: Datum und Uhrzeit des Essens.
+- Bei Gästen: Name des Gastes, zahlende Firma, Grund und wer eingeladen hat.
+
+Bankverbindung, Gehalt, Steuer- und Sozialversicherungsdaten, Adresse oder Geburtsdatum ruft die App nicht ab.
+
+## Rechtsgrundlage
+
+Art. 6 Abs. 1 lit. b DSGVO (Durchführung des Arbeitsverhältnisses) und Art. 6 Abs. 1 lit. c DSGVO (steuerliche Pflichten des Arbeitgebers). [Bitte prüfen lassen.]
+
+## Wer bekommt die Daten?
+
+- HR und die Direktion über einen geschützten Zugang.
+- Einmal im Monat geht eine Excel-Datei mit der Anzahl der Essen pro Person an HR, die sie an unser Steuerbüro weitergibt.
+- Der Server steht in Deutschland. [Anbieter ergänzen.] Es werden keine externen Dienste eingebunden.
+
+## Wie lange werden die Daten gespeichert?
+
+Buchungen und Gästedaten werden nach 12 Monaten automatisch gelöscht. Für die an HR und das Steuerbüro übergebenen Abrechnungsunterlagen gelten die gesetzlichen Aufbewahrungsfristen.
+
+## Am Tablet
+
+Nach der Pin-Eingabe wird nur dein Vorname angezeigt, der Bildschirm leert sich nach wenigen Sekunden. Nach fünf falschen Pins sperrt das Tablet kurz, damit niemand Pins durchprobieren kann.
+
+## Gäste
+
+Wenn du Gäste einlädst, informiere sie bitte kurz, dass ihr Name für die Abrechnung erfasst wird.
+
+## Deine Rechte
+
+Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung und Widerspruch. Wende dich dafür an HR oder an die bzw. den Datenschutzbeauftragten. Du kannst dich außerdem bei der Aufsichtsbehörde beschweren: Die Landesbeauftragte für den Datenschutz und für das Recht auf Akteneinsicht Brandenburg.
+
+Stand: [Datum]

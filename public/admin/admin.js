@@ -287,6 +287,7 @@
     $('save-state').textContent = '';
     loadGastroStatus();
     loadUsers();
+    if (!privacyDirty) loadPrivacy();
   }
 
   async function loadGastroStatus() {
@@ -385,6 +386,32 @@
     if (r.ok) { $('pw-current').value = ''; $('pw-next').value = ''; }
   });
 
+  // ---------- Datenschutzhinweise ----------
+  let privacyDirty = false;
+  function renderPrivacyPreview() {
+    const t = $('privacy-text').value;
+    window.renderPrivacy(t, $('privacy-preview'));
+    $('privacy-count').textContent = `${t.length.toLocaleString('de-DE')} von 20.000 Zeichen`;
+  }
+  async function loadPrivacy() {
+    const r = await api('/api/privacy');
+    $('privacy-text').value = r.text || '';
+    privacyDirty = false;
+    $('privacy-result').textContent = r.custom ? '' : 'Es wird der Standardtext angezeigt.';
+    renderPrivacyPreview();
+  }
+  $('privacy-text').addEventListener('input', () => { privacyDirty = true; $('privacy-result').textContent = 'Ungespeicherte Änderungen'; renderPrivacyPreview(); });
+  $('privacy-save').addEventListener('click', async () => {
+    const r = await api('/api/admin/privacy', { method: 'PUT', body: { text: $('privacy-text').value } });
+    $('privacy-result').textContent = r.ok ? 'Gespeichert. Das Tablet zeigt den neuen Text beim nächsten Öffnen (spätestens nach 10 Minuten).' : r.error;
+    if (r.ok) privacyDirty = false;
+  });
+  $('privacy-reset').addEventListener('click', async () => {
+    if (!confirm('Eigenen Text verwerfen und den Standardtext wiederherstellen?')) return;
+    const r = await api('/api/admin/privacy', { method: 'DELETE' });
+    if (r.ok) { await loadPrivacy(); $('privacy-result').textContent = 'Standardtext wiederhergestellt.'; }
+  });
+
   // ---------- Protokoll ----------
   const ACTIONS = {
     login: 'Anmeldung', booking_added: 'Buchung nachgetragen', booking_cancelled: 'Buchung storniert',
@@ -392,6 +419,7 @@
     export_failed: 'Excel-Versand fehlgeschlagen', export_downloaded: 'Excel heruntergeladen',
     gastromatic_sync: 'Mitarbeiter abgeglichen', user_created: 'Benutzer angelegt', user_deleted: 'Benutzer entfernt',
     password_changed: 'Passwort geändert',
+    privacy_changed: 'Datenschutzhinweise geändert', privacy_reset: 'Datenschutzhinweise zurückgesetzt',
   };
   async function loadAudit() {
     const r = await api('/api/admin/audit');
@@ -404,7 +432,7 @@
     )));
   }
 
-  window.addEventListener('beforeunload', (e) => { if (dirty) e.preventDefault(); });
+  window.addEventListener('beforeunload', (e) => { if (dirty || privacyDirty) e.preventDefault(); });
 
   // ---------- Start ----------
   api('/api/admin/me').then((r) => (r.ok ? startApp(r.user) : showLogin())).catch(showLogin);

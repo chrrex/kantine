@@ -13,6 +13,17 @@ const { insertBooking, hasBookingOn } = require('./booking');
 const { today, isIsoDate } = require('./time');
 
 const router = express.Router();
+
+// ---------- Datenschutzhinweise (öffentlich lesbar, im Admin bearbeitbar) ----------
+const fs = require('node:fs');
+const path = require('node:path');
+const PRIVACY_MAX = 20000;
+const privacyDefault = () => fs.readFileSync(path.join(__dirname, '..', 'public', 'shared', 'privacy-default.txt'), 'utf8');
+const privacyText = () => getSetting('privacy_text') || privacyDefault();
+
+router.get('/api/privacy', (req, res) => {
+  res.json({ ok: true, text: privacyText(), custom: !!getSetting('privacy_text') });
+});
 const bad = (res, error) => res.status(400).json({ ok: false, error });
 const text = (v, max = 200) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 
@@ -221,6 +232,21 @@ router.post('/api/admin/gastromatic/test', async (req, res) => {
 
 router.post('/api/admin/gastromatic/sync', async (req, res) => {
   try { res.json({ ok: true, ...(await syncEmployees(req.user.email)) }); } catch (err) { res.json({ ok: false, error: err.message }); }
+});
+
+router.put('/api/admin/privacy', (req, res) => {
+  const t = String(req.body?.text ?? '').replace(/\r\n?/g, '\n');
+  if (!t.trim()) return bad(res, 'Der Text darf nicht leer sein.');
+  if (t.length > PRIVACY_MAX) return bad(res, `Der Text ist zu lang (max. ${PRIVACY_MAX} Zeichen).`);
+  setSetting('privacy_text', t);
+  audit(req.user.email, 'privacy_changed', { length: t.length });
+  res.json({ ok: true });
+});
+
+router.delete('/api/admin/privacy', (req, res) => {
+  setSetting('privacy_text', '');
+  audit(req.user.email, 'privacy_reset');
+  res.json({ ok: true, text: privacyDefault() });
 });
 
 // ---------- Benutzer ----------

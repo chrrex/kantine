@@ -77,6 +77,7 @@ Der Abgleich läuft jede Nacht ab 2 Uhr automatisch. Pins werden nur als Hash ge
 - Buchungen, Gästedaten und Protokoll werden nach 12 Monaten automatisch gelöscht (einstellbar).
 - Zugangsdaten (Gastromatic-Secret, Postfach-Passwort) liegen verschlüsselt in der Datenbank.
 - Jede Stornierung, jeder Nachtrag und jede Änderung der Settings steht mit Name und Zeitpunkt im Protokoll.
+- Datenschutzhinweise: am Tablet über den Button „Datenschutz“, in der Verwaltung über den Link „Datenschutz“. Der Text wird im Admin unter **Settings → Datenschutzhinweise** bearbeitet (mit Vorschau); der Standardtext liegt in `public/shared/privacy-default.txt` und ist ein Entwurf, der vor dem Start geprüft werden muss.
 - Schriften werden lokal ausgeliefert (kein Abruf bei Google).
 - Die `.env` und der Ordner `data/` gehören nie ins Repository (stehen in `.gitignore`).
 

@@ -131,6 +131,21 @@ test('Admin: Liste, Storno, Nachtrag, Excel', async () => {
   assert.equal(wb.getWorksheet('Gäste').rowCount, 3);
 });
 
+test('Datenschutzhinweise: lesen, ändern, zurücksetzen', async () => {
+  const def = await json('GET', '/api/privacy');
+  assert.equal(def.custom, false);
+  assert.match(def.text, /Datenschutzhinweise zur Kantinen-App/);
+  const anon = await call('PUT', '/api/admin/privacy', { body: { text: 'x' } });
+  assert.equal(anon.status, 401);
+  assert.equal((await json('PUT', '/api/admin/privacy', { cookie: adminCookie, body: { text: '  ' } })).ok, false);
+  assert.equal((await json('PUT', '/api/admin/privacy', { cookie: adminCookie, body: { text: '# Neu\n\nEigener Text' } })).ok, true);
+  const mine = await json('GET', '/api/privacy');
+  assert.equal(mine.custom, true);
+  assert.equal(mine.text, '# Neu\n\nEigener Text');
+  assert.equal((await json('DELETE', '/api/admin/privacy', { cookie: adminCookie })).ok, true);
+  assert.equal((await json('GET', '/api/privacy')).custom, false);
+});
+
 test('Admin-API ohne Anmeldung gesperrt', async () => {
   const r = await call('GET', '/api/admin/bookings');
   assert.equal(r.status, 401);

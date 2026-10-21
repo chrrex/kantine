@@ -109,3 +109,16 @@ dialog::backdrop { background: rgba(31, 36, 25, .45); }
   .two { grid-template-columns: 1fr; } .two .span2 { grid-column: auto; }
   .login-card { padding: 28px; }
 }
+
+/* Datenschutzhinweise bearbeiten */
+.privacy-edit { grid-column: 1 / -1; }
+.privacy-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 900px) { .privacy-columns { grid-template-columns: 1fr; } }
+textarea {
+  width: 100%; min-height: 420px; border: 1px solid var(--field); border-radius: 8px; padding: 12px;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px; line-height: 1.5; color: var(--ink); resize: vertical;
+}
+.privacy-preview { border: 1px solid var(--line-soft); border-radius: 8px; padding: 16px 20px; max-height: 520px; overflow-y: auto; background: var(--bg); }
+.privacy-preview .privacy h1 { font-size: 24px; } .privacy-preview .privacy h2 { font-size: 18px; margin-top: 18px; }
+.privacy-preview .privacy p, .privacy-preview .privacy li { font-size: 15px; }
+code { background: var(--green-tint); padding: 1px 5px; border-radius: 4px; font-size: 13px; }

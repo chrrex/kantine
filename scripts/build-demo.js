@@ -48,7 +48,10 @@ rewriteHtml(path.join(out, 'kiosk', 'index.html'), 'kiosk');
 rewriteHtml(path.join(out, 'admin', 'index.html'), 'admin');
 
 const privacy = path.join(out, 'shared', 'datenschutz.html');
-fs.writeFileSync(privacy, fs.readFileSync(privacy, 'utf8').replaceAll('href="/shared/', 'href="./'));
+fs.writeFileSync(privacy, fs.readFileSync(privacy, 'utf8')
+  .replaceAll('href="/shared/', 'href="./')
+  .replace('<script src="/shared/privacy-render.js"></script>', '<link rel="stylesheet" href="../demo/demo.css">\n<script src="../demo/demo-api.js"></script>\n<script src="./privacy-render.js"></script>')
+  .replace('<script src="/shared/datenschutz.js"></script>', '<script src="./datenschutz.js"></script>'));
 for (const f of ['admin/index.html']) {
   const file = path.join(out, f);
   fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replaceAll('href="/shared/datenschutz.html"', 'href="../shared/datenschutz.html"'));
