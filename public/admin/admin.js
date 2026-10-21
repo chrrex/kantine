@@ -395,16 +395,24 @@
   }
   async function loadPrivacy() {
     const r = await api('/api/privacy');
+    if (!r.ok) return;
     $('privacy-text').value = r.text || '';
     privacyDirty = false;
-    $('privacy-result').textContent = r.custom ? '' : 'Es wird der Standardtext angezeigt.';
+    $('privacy-result').textContent = r.custom
+      ? 'Angezeigt wird der aktuell gültige Text.'
+      : 'Angezeigt wird der aktuell gültige Text (Standardtext, noch nicht angepasst).';
     renderPrivacyPreview();
   }
+  // Wer zur Verwaltung zurückkehrt, sieht immer den aktuellen Stand – solange nichts ungespeichert ist.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && !$('tab-settings').hidden && !privacyDirty) loadPrivacy();
+  });
   $('privacy-text').addEventListener('input', () => { privacyDirty = true; $('privacy-result').textContent = 'Ungespeicherte Änderungen'; renderPrivacyPreview(); });
   $('privacy-save').addEventListener('click', async () => {
     const r = await api('/api/admin/privacy', { method: 'PUT', body: { text: $('privacy-text').value } });
-    $('privacy-result').textContent = r.ok ? 'Gespeichert. Das Tablet zeigt den neuen Text beim nächsten Öffnen (spätestens nach 10 Minuten).' : r.error;
-    if (r.ok) privacyDirty = false;
+    if (!r.ok) { $('privacy-result').textContent = r.error; return; }
+    await loadPrivacy(); // gespeicherten Stand neu laden, damit das Feld genau den gültigen Text zeigt
+    $('privacy-result').textContent = 'Gespeichert. Das Tablet zeigt den neuen Text beim nächsten Öffnen (spätestens nach 10 Minuten).';
   });
   $('privacy-reset').addEventListener('click', async () => {
     if (!confirm('Eigenen Text verwerfen und den Standardtext wiederherstellen?')) return;
