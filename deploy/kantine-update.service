@@ -1,0 +1,9 @@
+[Unit]
+Description=Kantinen-App: freigegebene Version von GitHub einspielen
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/kantine/app/scripts/update.sh
+TimeoutStartSec=15min
