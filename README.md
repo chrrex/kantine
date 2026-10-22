@@ -81,6 +81,14 @@ Der Abgleich läuft jede Nacht ab 2 Uhr automatisch. Pins werden nur als Hash ge
 - Schriften werden lokal ausgeliefert (kein Abruf bei Google).
 - Die `.env` und der Ordner `data/` gehören nie ins Repository (stehen in `.gitignore`).
 
+## Updates und Freigaben
+
+- Entwickelt wird auf dem Zweig `main`. Auf den Server kommt nur, was auf dem Zweig **`release`** liegt.
+- Freigeben: `git push origin main:release` (nur nach erfolgreichen Tests).
+- Der Server holt sich neue Versionen jede Nacht um 3:30 selbst (`deploy/kantine-update.timer` → `scripts/update.sh`, Windows: `scripts/update.ps1` über die Aufgabenplanung).
+- Das Update-Skript sichert vorher die Datenbank (`/opt/kantine/backups`, 14 Stück), installiert, führt `npm test` aus, startet neu und prüft, ob die App antwortet. Schlägt etwas fehl, wird automatisch die vorherige Version wiederhergestellt.
+- Von Hand: `sudo /opt/kantine/app/scripts/update.sh`; Protokoll: `journalctl -u kantine-update`.
+
 ## Betrieb
 
 - Läuft auf jedem Server mit Node.js (Linux, Windows). Für den Dauerbetrieb z. B. mit `pm2` oder als systemd-Dienst starten.

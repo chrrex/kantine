@@ -41,13 +41,13 @@ Log "Neue Version gefunden: $($old.Substring(0,7)) -> $($new.Substring(0,7))"
 # 1. Datenbank sichern
 New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
 $backup = Join-Path $BackupDir ("kantine-{0}-{1}.db" -f (Get-Date -Format 'yyyy-MM-dd-HHmm'), $old.Substring(0,7))
-Run node @('scripts/backup-db.js', $backup)
+Run node @('--disable-warning=ExperimentalWarning', 'scripts/backup-db.js', $backup)
 Get-ChildItem $BackupDir -Filter 'kantine-*.db' | Sort-Object LastWriteTime -Descending | Select-Object -Skip $KeepBackups | Remove-Item -Force
 
 function Rollback($reason) {
   Log "FEHLER: $reason - stelle Version $($old.Substring(0,7)) wieder her."
   git reset --quiet --hard $old
-  npm.cmd ci --omit=dev --no-audit --no-fund --loglevel=error
+  npm.cmd ci --omit=dev --no-audit --no-fund --silent
   Restart-Service -Name $Service -ErrorAction SilentlyContinue
   Log "Vorherige Version ist wieder aktiv. Sicherung: $backup"
   exit 1
@@ -56,7 +56,7 @@ function Rollback($reason) {
 # 2. Neue Version und Pakete
 try {
   Run git @('reset', '--quiet', '--hard', $new)
-  Run npm.cmd @('ci', '--omit=dev', '--no-audit', '--no-fund', '--loglevel=error')
+  Run npm.cmd @('ci', '--omit=dev', '--no-audit', '--no-fund', '--silent')
 } catch { Rollback "Installation fehlgeschlagen: $_" }
 
 # 3. Tests

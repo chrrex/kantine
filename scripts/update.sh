@@ -61,14 +61,14 @@ mkdir -p "$BACKUP_DIR"
 chown "$APP_USER" "$BACKUP_DIR" 2>/dev/null || true
 chmod 700 "$BACKUP_DIR" 2>/dev/null || true
 BACKUP_FILE="$BACKUP_DIR/kantine-$(date +%F-%H%M)-${OLD:0:7}.db"
-as_app node scripts/backup-db.js "$BACKUP_FILE"
+as_app node --disable-warning=ExperimentalWarning scripts/backup-db.js "$BACKUP_FILE"
 # alte Sicherungen aufräumen
 ls -1t "$BACKUP_DIR"/kantine-*.db 2>/dev/null | tail -n +"$((KEEP_BACKUPS + 1))" | xargs -r rm -f
 
 rollback() {
   log "FEHLER: $1 – stelle Version ${OLD:0:7} wieder her."
   as_app git reset --quiet --hard "$OLD"
-  as_app npm ci --omit=dev --no-audit --no-fund --loglevel=error
+  as_app npm ci --omit=dev --no-audit --no-fund --silent
   $RESTART_CMD || true
   log "Vorherige Version ${OLD:0:7} ist wieder aktiv. Sicherung: $BACKUP_FILE"
   exit 1
@@ -76,7 +76,7 @@ rollback() {
 
 # 2. Neue Version auschecken und Pakete installieren
 as_app git reset --quiet --hard "$NEW"
-as_app npm ci --omit=dev --no-audit --no-fund --loglevel=error || rollback "Pakete konnten nicht installiert werden"
+as_app npm ci --omit=dev --no-audit --no-fund --silent || rollback "Pakete konnten nicht installiert werden"
 
 # 3. Automatische Tests (laufen mit eigener Testdatenbank, echte Daten bleiben unberührt)
 as_app npm test --silent >/tmp/kantine-update-tests.log 2>&1 || { tail -n 40 /tmp/kantine-update-tests.log; rollback "Tests fehlgeschlagen"; }
