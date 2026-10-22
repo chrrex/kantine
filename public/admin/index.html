@@ -76,6 +76,16 @@
       </table>
       <p class="empty muted" id="rows-empty" hidden>Keine Buchungen im gewählten Zeitraum.</p>
     </section>
+    <section class="card table-wrap" id="offline-rejected" hidden>
+      <div class="offline-head">
+        <h2>Offline erfasst – nachträglich abgelehnt</h2>
+        <p class="small muted">Diese Eingaben wurden am Tablet ohne WLAN gespeichert und bei der späteren Prüfung nicht gebucht. Bei Bedarf als Buchung nachtragen.</p>
+      </div>
+      <table>
+        <thead><tr><th>Datum</th><th>Uhrzeit</th><th>Personalnr.</th><th>Name</th><th>Grund</th></tr></thead>
+        <tbody id="offline-rows"></tbody>
+      </table>
+    </section>
     <p class="small muted">Jede Stornierung und jeder Nachtrag braucht einen Kommentar und wird im Protokoll gespeichert.</p>
   </main>
 

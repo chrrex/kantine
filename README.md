@@ -48,6 +48,14 @@ Test-Pins im Modus `GASTROMATIC_MODE=mock`:
 3. Nach 5 falschen Pins in Folge sperrt das Tablet für 1 Minute.
 4. „Gäste einladen“: Pin → Firma, Grund (Liste oder „Sonstiges“ mit Freitext), ein oder mehrere Gäste. Das eigene Essen ist vorausgewählt und kann abgewählt werden.
 
+## Ohne WLAN (Offline-Modus)
+
+- Ist das Tablet ohne Verbindung, erscheint oben ein deutlicher Hinweis „Keine WLAN-Verbindung“. Gebucht werden kann trotzdem: Die Eingabe wird mit dem öffentlichen Schlüssel des Servers verschlüsselt (RSA-OAEP), auf dem Tablet zwischengespeichert und mit gelbem Bildschirm „Gespeichert – wird nachgereicht“ bestätigt.
+- Sobald die Verbindung wieder steht, schickt das Tablet alles automatisch. Erst dann prüft der Server Pin, Aktiv-Status, „schon gebucht“ und Stempelung. Angenommene Buchungen tragen den Vermerk „offline erfasst“ (auch in der Excel), abgelehnte stehen im Admin unter „Offline erfasst – nachträglich abgelehnt“.
+- Gäste einladen geht nur mit Verbindung. Einträge, die älter als 7 Tage sind, werden nicht mehr angenommen.
+- Die Tablet-Seite startet dank Service Worker auch ohne WLAN.
+- **Voraussetzung: HTTPS.** Verschlüsselung im Browser und Service Worker funktionieren nur über HTTPS. Ohne HTTPS zeigt das Tablet bei WLAN-Ausfall „Buchen ist gerade nicht möglich“.
+
 ## Gastromatic anbinden
 
 1. In Gastromatic auf der API-Verwaltungsseite einen Zugang anlegen (Client ID + Client Secret) mit Lesezugriff auf Organisationen, Mitarbeiter und – falls angeboten – Stempelzeiten.

@@ -5,3 +5,5 @@
 .demo-bar a { color: #FFFFFF; }
 /* Am Tablet: klein unten links, damit die Vollbild-Ansicht frei bleibt */
 #app ~ .demo-bar { position: fixed; left: 12px; bottom: 20px; border-radius: 8px; opacity: .85; z-index: 10; }
+
+.demo-wifi { font: inherit; font-size: 14px; font-weight: 700; color: #1F2419; background: #FFF1D6; border: 0; border-radius: 6px; padding: 6px 12px; margin-left: 4px; cursor: pointer; }

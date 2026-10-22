@@ -30,6 +30,7 @@ function cleanup() {
   const g = db.prepare('DELETE FROM guests WHERE date < ?').run(cutoff).changes;
   db.prepare('DELETE FROM audit_log WHERE date(at) < ?').run(cutoff);
   db.prepare('DELETE FROM exports WHERE date(at) < ?').run(cutoff);
+  require('./offline').cleanupOffline(cutoff);
   // Ausgeschiedene ohne verbleibende Buchungen ganz entfernen
   db.prepare(`DELETE FROM employees WHERE is_active = 0 AND date(synced_at) < ?
       AND id NOT IN (SELECT employee_id FROM bookings) AND id NOT IN (SELECT host_employee_id FROM guests)`).run(cutoff);

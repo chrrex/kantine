@@ -161,4 +161,4 @@ function completeGuestInvite({ token, payingCompany, reason, reasonOther, guests
   return { ok: true, firstName: employee.first_name, guestCount: names.length, selfBooked, payingCompany: company, reason: finalReason, guests: names };
 }
 
-module.exports = { bookMeal, startGuestInvite, completeGuestInvite, insertBooking, isActiveOn, hasBookingOn, lockedSeconds };
+module.exports = { bookMeal, startGuestInvite, completeGuestInvite, insertBooking, isActiveOn, hasBookingOn, lockedSeconds, findEmployeeByPin };

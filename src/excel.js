@@ -83,6 +83,7 @@ async function buildWorkbook(from, to) {
       const notes = [];
       if (!r.punch_checked) notes.push('Stempelung nicht geprüft');
       if (r.source === 'admin') notes.push('nachgetragen');
+      if (r.source === 'offline') notes.push('offline erfasst');
       ws.addRow({ staff: r.staff_number, last: r.last_name, first: r.first_name, date: formatDe(r.date), time: r.time, note: notes.join(', ') });
     }
 

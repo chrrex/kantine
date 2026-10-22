@@ -101,6 +101,12 @@ router.get('/api/admin/bookings', (req, res) => {
   res.json({ ok: true, from, to, rows: rows.slice(0, 2000), truncated: rows.length > 2000 });
 });
 
+router.get('/api/admin/offline-rejected', (req, res) => {
+  const from = isIsoDate(req.query.from) ? req.query.from : pendingPeriod().from;
+  const to = isIsoDate(req.query.to) ? req.query.to : today();
+  res.json({ ok: true, rows: require('./offline').rejectedEntries(from, to) });
+});
+
 router.post('/api/admin/bookings', (req, res) => {
   const { employeeId, date } = req.body || {};
   const time = /^\d{2}:\d{2}$/.test(req.body?.time || '') ? req.body.time : '12:00';

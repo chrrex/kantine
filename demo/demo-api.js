@@ -6,6 +6,7 @@
  * Gastromatic und Mailversand werden nur simuliert.
  */
 (() => {
+  window.KANTINE_DEMO = true;
   const STORE = 'kantine-demo-v1';
   const TZ = 'Europe/Berlin';
   const DEMO_USER = { email: 'demo@liebenberg.de', password: 'kantine-demo' };
@@ -159,7 +160,7 @@
       header(ws.getRow(1));
       list.sort((a, b) => a.e.last_name.localeCompare(b.e.last_name, 'de') || (a.date + a.time).localeCompare(b.date + b.time));
       for (const r of list) {
-        const notes = [!r.punch_checked && 'Stempelung nicht geprüft', r.source === 'admin' && 'nachgetragen'].filter(Boolean).join(', ');
+        const notes = [!r.punch_checked && 'Stempelung nicht geprüft', r.source === 'admin' && 'nachgetragen', r.source === 'offline' && 'offline erfasst'].filter(Boolean).join(', ');
         ws.addRow([r.e.staff_number, r.e.last_name, r.e.first_name, formatDe(r.date), r.time, notes]);
       }
       ws.addRow([]); ws.addRow([]);
@@ -189,6 +190,52 @@
     return d <= thisMonth && !sent ? thisMonth : `${addMonths(`${d.slice(0, 8)}01`, 1).slice(0, 8)}${day}`;
   }
 
+  // ---------- Offline-Simulation ----------
+  const OFFLINE_FLAG = 'kantine-demo-offline';
+  const demoOffline = () => { try { return localStorage.getItem(OFFLINE_FLAG) === '1'; } catch { return false; } };
+  const b64 = (buf) => { let x = ''; for (const c of new Uint8Array(buf)) x += String.fromCharCode(c); return btoa(x); };
+  const unb64 = (str) => Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
+  async function offlineKeys() {
+    if (db.offlineKeys) return db.offlineKeys;
+    const pair = await crypto.subtle.generateKey({ name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['encrypt', 'decrypt']);
+    db.offlineKeys = { spki: b64(await crypto.subtle.exportKey('spki', pair.publicKey)), pkcs8: b64(await crypto.subtle.exportKey('pkcs8', pair.privateKey)) };
+    save();
+    return db.offlineKeys;
+  }
+  const OFFLINE_REASONS = { pin_unknown: 'Pin unbekannt', inactive: 'Kein aktives Profil', not_punched: 'An diesem Tag nicht eingestempelt', invalid_time: 'Ungültige Uhrzeit auf dem Tablet', undecryptable: 'Eintrag nicht lesbar' };
+  async function processOffline(items) {
+    db.offline = db.offline || [];
+    const keys = await offlineKeys();
+    const priv = await crypto.subtle.importKey('pkcs8', unb64(keys.pkcs8), { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['decrypt']);
+    const results = [];
+    for (const item of [...(items || [])].sort((a, b) => String(a.order).localeCompare(String(b.order)))) {
+      if (db.offline.some((o) => o.id === item.id)) { results.push({ id: item.id, status: 'duplicate', duplicate: true }); continue; }
+      let payload;
+      try { payload = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, priv, unb64(item.enc)))); } catch { payload = null; }
+      const rec = { id: item.id, received_at: nowTs() };
+      const reject = (reason, e) => { Object.assign(rec, { status: 'rejected', reason, employee_id: e?.id || null }); db.offline.push(rec); results.push({ id: item.id, status: 'rejected', reason }); };
+      if (!payload) { reject('undecryptable'); continue; }
+      const ts = Date.parse(payload.ts);
+      if (!Number.isFinite(ts) || ts > Date.now() + 600e3 || ts < Date.now() - 7 * 864e5) { reject('invalid_time'); continue; }
+      const { date, time } = nowParts(new Date(Math.min(ts, Date.now())));
+      Object.assign(rec, { date, time });
+      const e = db.employees.filter((x) => x.pin === String(payload.pin)).sort((a, b) => b.is_active - a.is_active)[0];
+      if (!e) { reject('pin_unknown'); continue; }
+      if (!isActiveOn(e, date)) { reject('inactive', e); continue; }
+      const punched = EMPLOYEES.find((x) => x.id === e.id)?.punched;
+      if (punched === false) { reject('not_punched', e); continue; }
+      // Demo: wie online ersetzt eine neue Eingabe die Buchung desselben Tages
+      removeTodaysBooking(e.id, date);
+      db.bookings = db.bookings.filter((b) => !(b.employee_id === e.id && b.date === date && !b.cancelled_at && b.source === 'offline'));
+      addBooking(e.id, date, time, punched === true, 'offline', 'offline erfasst');
+      Object.assign(rec, { status: 'accepted', employee_id: e.id });
+      db.offline.push(rec);
+      results.push({ id: item.id, status: 'accepted' });
+    }
+    save();
+    return results;
+  }
+
   // ---------- API ----------
   const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
   const bad = (error) => json({ ok: false, error }, 400);
@@ -197,7 +244,9 @@
   async function handle(method, path, query, body) {
     reload();
     // Tablet
-    if (path === 'kiosk/config') return json({ sounds: db.settings.sounds_enabled !== '0' });
+    if (path === 'kiosk/config') return json({ sounds: db.settings.sounds_enabled !== '0', offlineKey: (await offlineKeys()).spki, offlineMaxAgeDays: 7 });
+    if (path === 'kiosk/ping') return json({ ok: true });
+    if (path === 'kiosk/offline-sync') return json({ ok: true, results: await processOffline(body.items) });
     if (path === 'kiosk/meal') {
       // Demo: Test-Pins sollen beliebig oft funktionieren. Eine frühere Buchung derselben Person
       // von heute wird gelöscht und durch die neue ersetzt (in der echten App: „Schon gebucht“).
@@ -292,6 +341,14 @@
       }
       rows.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time) || b.id - a.id);
       return json({ ok: true, from, to, rows });
+    }
+    if (path === 'admin/offline-rejected') {
+      const from = isIso(query.get('from')) ? query.get('from') : pendingPeriod().from;
+      const to = isIso(query.get('to')) ? query.get('to') : today();
+      const rows = (db.offline || []).filter((o) => o.status === 'rejected' && (o.date || o.received_at.slice(0, 10)) >= from && (o.date || o.received_at.slice(0, 10)) <= to)
+        .map((o) => { const e = o.employee_id && emp(o.employee_id); return { ...o, staff_number: e?.staff_number, first_name: e?.first_name, last_name: e?.last_name, reason_text: OFFLINE_REASONS[o.reason] || o.reason }; })
+        .reverse();
+      return json({ ok: true, rows });
     }
     if (path === 'admin/bookings' && method === 'POST') {
       const comment = clean(body.comment);
@@ -397,6 +454,10 @@
     const url = new URL(typeof input === 'string' ? input : input.url, location.href);
     const m = url.pathname.match(/\/api\/(.+)$/);
     if (!m) return realFetch(input, init);
+    if (demoOffline() && m[1].startsWith('kiosk/')) {
+      await new Promise((r) => setTimeout(r, 300));
+      throw new TypeError('Failed to fetch');
+    }
     const method = (init.method || 'GET').toUpperCase();
     let body = {};
     try { body = init.body ? JSON.parse(init.body) : {}; } catch { body = {}; }
@@ -417,6 +478,19 @@
     const home = document.createElement('a'); home.href = '../'; home.textContent = 'Zur Demo-Startseite';
     bar.append(home);
     (isAdmin ? document.body.prepend(bar) : document.body.append(bar));
+    if (/\/kiosk\//.test(location.pathname)) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'demo-wifi';
+      const label = () => { btn.textContent = demoOffline() ? 'WLAN wieder einschalten' : 'WLAN-Ausfall simulieren'; };
+      label();
+      btn.addEventListener('click', () => {
+        try { localStorage.setItem(OFFLINE_FLAG, demoOffline() ? '0' : '1'); } catch { /* egal */ }
+        label();
+        window.dispatchEvent(new Event(demoOffline() ? 'offline' : 'online'));
+      });
+      bar.append(' · ', btn);
+    }
     if (isAdmin) {
       const email = document.getElementById('login-email');
       const pw = document.getElementById('login-password');

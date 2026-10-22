@@ -29,6 +29,14 @@
         <div class="date" id="today"></div>
       </div>
     </header>
+    <div class="offline-banner" id="offline-banner" role="alert">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 8.8a15 15 0 0 1 4.2-2.6M9.5 5.2A15 15 0 0 1 22 8.8M5 12.5a10 10 0 0 1 3.4-2M15.5 10.4A10 10 0 0 1 19 12.5M8.5 16a5 5 0 0 1 7 0M12 20h.01M3 3l18 18"/></svg>
+      <div>
+        <strong>Keine WLAN-Verbindung</strong>
+        <span id="offline-text">Du kannst trotzdem buchen. Deine Eingabe wird gespeichert und im Nachgang geprüft, sobald das Tablet wieder online ist.</span>
+        <span class="offline-count" id="offline-count"></span>
+      </div>
+    </div>
     <main class="pin-layout">
       <div class="pin-intro">
         <div class="guest-icon" data-mode="guest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M19 8v6M16 11h6"/></svg></div>
@@ -55,7 +63,7 @@
 
   <!-- 2/3 · Ergebnis (grün/rot) -->
   <section class="screen result" id="screen-result" aria-live="assertive">
-    <div class="result-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="icon-ok" d="M4 12l5 5L20 6"/><path class="icon-err" d="M6 6l12 12M18 6L6 18"/></svg></div>
+    <div class="result-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="icon-ok" d="M4 12l5 5L20 6"/><path class="icon-err" d="M6 6l12 12M18 6L6 18"/><g class="icon-pending"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g></svg></div>
     <h1 id="result-title"></h1>
     <p id="result-text"></p>
     <dl class="summary" id="result-summary" hidden></dl>

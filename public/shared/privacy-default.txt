@@ -42,6 +42,8 @@ Buchungen und Gästedaten werden nach 12 Monaten automatisch gelöscht. Für die
 
 Nach der Pin-Eingabe wird nur dein Vorname angezeigt, der Bildschirm leert sich nach wenigen Sekunden. Nach fünf falschen Pins sperrt das Tablet kurz, damit niemand Pins durchprobieren kann.
 
+Ist das WLAN gestört, speichert das Tablet deine Eingabe verschlüsselt zwischen, bis die Verbindung wieder steht. Nur der Server kann sie lesen und prüft sie dann; danach wird sie vom Tablet gelöscht.
+
 ## Gäste
 
 Wenn du Gäste einlädst, informiere sie bitte kurz, dass ihr Name für die Abrechnung erfasst wird.

@@ -146,6 +146,53 @@ test('Datenschutzhinweise: lesen, ändern, zurücksetzen', async () => {
   assert.equal((await json('GET', '/api/privacy')).custom, false);
 });
 
+test('Offline-Buchungen: verschlüsselt nachreichen und prüfen', async () => {
+  const crypto = require('node:crypto');
+  const cfg = await json('GET', '/api/kiosk/config', { cookie: kioskCookie });
+  assert.ok(cfg.offlineKey, 'öffentlicher Schlüssel fehlt');
+  const key = crypto.createPublicKey({ key: Buffer.from(cfg.offlineKey, 'base64'), format: 'der', type: 'spki' });
+  const enc = (pin, ts) => crypto.publicEncrypt({ key, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+    Buffer.from(JSON.stringify({ pin, ts }))).toString('base64');
+  const now = new Date().toISOString();
+  const old = new Date(Date.now() - 10 * 864e5).toISOString();
+  // Zwei Offline-Eingaben derselben Person am selben Tag: nur die erste kann zählen
+  const items = [
+    { id: 'off-aaaaaaaa1', order: '1', enc: enc('3333', now) },
+    { id: 'off-aaaaaaaa2', order: '2', enc: enc('3333', now) },
+    { id: 'off-aaaaaaaa3', order: '3', enc: enc('9999', now) },
+    { id: 'off-aaaaaaaa4', order: '4', enc: enc('4444', now) },
+    { id: 'off-aaaaaaaa5', order: '5', enc: enc('2222', old) },
+    { id: 'off-aaaaaaaa6', order: '6', enc: 'kaputt' },
+  ];
+  const r = await json('POST', '/api/kiosk/offline-sync', { cookie: kioskCookie, body: { items } });
+  const by = Object.fromEntries(r.results.map((x) => [x.id, x]));
+  assert.ok(['accepted', 'rejected'].includes(by['off-aaaaaaaa1'].status));
+  assert.equal(by['off-aaaaaaaa2'].status, 'rejected');
+  assert.equal(by['off-aaaaaaaa2'].reason, 'already_booked');
+  assert.equal(by['off-aaaaaaaa3'].reason, 'pin_unknown');
+  assert.equal(by['off-aaaaaaaa4'].reason, 'inactive');
+  assert.equal(by['off-aaaaaaaa5'].reason, 'invalid_time');
+  assert.equal(by['off-aaaaaaaa6'].reason, 'undecryptable');
+  // Doppelte Übertragung bucht nicht doppelt
+  const again = await json('POST', '/api/kiosk/offline-sync', { cookie: kioskCookie, body: { items: [items[0]] } });
+  assert.equal(again.results[0].duplicate, true);
+  const rej = await json('GET', '/api/admin/offline-rejected', { cookie: adminCookie });
+  assert.ok(rej.rows.length >= 4);
+  assert.ok(rej.rows.some((x) => x.reason_text === 'Pin unbekannt'));
+});
+
+test('Offline-Buchung wird gebucht, wenn alles passt', async () => {
+  const crypto = require('node:crypto');
+  const cfg = await json('GET', '/api/kiosk/config', { cookie: kioskCookie });
+  const key = crypto.createPublicKey({ key: Buffer.from(cfg.offlineKey, 'base64'), format: 'der', type: 'spki' });
+  const enc = crypto.publicEncrypt({ key, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+    Buffer.from(JSON.stringify({ pin: '6666', ts: new Date(Date.now() - 864e5).toISOString() }))).toString('base64');
+  const r = await json('POST', '/api/kiosk/offline-sync', { cookie: kioskCookie, body: { items: [{ id: 'off-bbbbbbbb1', order: '1', enc }] } });
+  assert.equal(r.results[0].status, 'accepted');
+  const list = await json('GET', `/api/admin/bookings?from=2000-01-01&type=meal&q=Richter`, { cookie: adminCookie });
+  assert.ok(list.rows.some((x) => x.source === 'offline'));
+});
+
 test('Admin-API ohne Anmeldung gesperrt', async () => {
   const r = await call('GET', '/api/admin/bookings');
   assert.equal(r.status, 401);

@@ -25,6 +25,9 @@
     invalid: ['Angaben unvollständig', 'Bitte prüfe das Formular.'],
     network: ['Keine Verbindung', 'Bitte versuche es gleich noch einmal.'],
     kiosk_not_authorized: ['Tablet nicht freigeschaltet', 'Bitte wende dich an HR.'],
+    offline_guest: ['Keine WLAN-Verbindung', 'Gäste einladen geht nur mit Verbindung. Bitte später noch einmal versuchen.'],
+    offline_unavailable: ['Keine WLAN-Verbindung', 'Buchen ist gerade nicht möglich. Bitte später noch einmal versuchen.'],
+    offline_full: ['Speicher voll', 'Zu viele Buchungen ohne Verbindung. Bitte HR informieren.'],
   };
 
   // ---------- Töne (ohne Audiodateien) ----------
@@ -64,13 +67,31 @@
     }
   }
 
+  const REQUEST_TIMEOUT_MS = 6000;
+  class OfflineError extends Error {}
+
+  async function request(path, options = {}) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+    let res;
+    try {
+      res = await fetch(path, { credentials: 'same-origin', ...options, signal: ctrl.signal });
+    } catch {
+      throw new OfflineError('offline');
+    } finally {
+      clearTimeout(timer);
+    }
+    if ([502, 503, 504].includes(res.status)) throw new OfflineError('offline');
+    return res;
+  }
+
   async function api(path, body) {
-    const res = await fetch(path, {
+    const res = await request(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
       body: JSON.stringify(body || {}),
     });
+    setOnline(true);
     if (res.status === 401) return { ok: false, code: 'kiosk_not_authorized' };
     if (!res.ok && res.status >= 500) throw new Error('server');
     return res.json();
@@ -143,8 +164,14 @@
       } else {
         openGuestForm(result);
       }
-    } catch {
-      showError({ code: 'network' });
+    } catch (err) {
+      if (err instanceof OfflineError) {
+        setOnline(false);
+        if (state.mode !== 'meal') showError({ code: 'offline_guest' });
+        else await bookOffline(pin);
+      } else {
+        showError({ code: 'network' });
+      }
     } finally {
       state.busy = false;
       resetPin();
@@ -195,6 +222,119 @@
     soundError();
     startCountdown(ERROR_MS);
   }
+
+  function showPending() {
+    const el = screens.result;
+    el.className = 'screen result pending';
+    $('result-title').textContent = 'Gespeichert – wird nachgereicht';
+    $('result-text').textContent = 'Keine WLAN-Verbindung. Deine Eingabe wird geprüft, sobald das Tablet wieder online ist.';
+    $('result-summary').hidden = true;
+    $('result-retry').hidden = true;
+    show('result');
+    tone([520], 'sine', 0.25);
+    startCountdown(ERROR_MS);
+  }
+
+  // ---------- Offline-Modus ----------
+  // Ohne WLAN wird die Pin-Eingabe mit dem öffentlichen Schlüssel des Servers verschlüsselt
+  // und lokal gespeichert. Nur der Server kann sie lesen und prüft sie beim Nachreichen.
+  const QUEUE_KEY = 'kantine-offline-queue';
+  const KEY_KEY = 'kantine-offline-key';
+  const MAX_QUEUE = 300;
+  const PING_ONLINE_MS = 60000;
+  const PING_OFFLINE_MS = 15000;
+  let online = true;
+  let flushing = false;
+
+  const store = {
+    get(k, fallback) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+  };
+  const queue = () => store.get(QUEUE_KEY, []);
+  const canQueue = () => !!(window.crypto && crypto.subtle && store.get(KEY_KEY, null));
+
+  function b64ToBytes(b64) { return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); }
+  function bytesToB64(buf) { let s = ''; for (const b of new Uint8Array(buf)) s += String.fromCharCode(b); return btoa(s); }
+  function randomId() { return bytesToB64(crypto.getRandomValues(new Uint8Array(18))).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' }[c])); }
+
+  async function encryptForServer(payload) {
+    const key = await crypto.subtle.importKey('spki', b64ToBytes(store.get(KEY_KEY, '')), { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['encrypt']);
+    const data = new TextEncoder().encode(JSON.stringify(payload));
+    return bytesToB64(await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, key, data));
+  }
+
+  async function bookOffline(pin) {
+    if (!canQueue()) return showError({ code: 'offline_unavailable' });
+    const q = queue();
+    if (q.length >= MAX_QUEUE) return showError({ code: 'offline_full' });
+    try {
+      const ts = new Date().toISOString();
+      q.push({ id: randomId(), order: `${ts}-${String(q.length).padStart(4, '0')}`, enc: await encryptForServer({ pin, ts }) });
+      if (!store.set(QUEUE_KEY, q)) return showError({ code: 'offline_full' });
+    } catch {
+      return showError({ code: 'offline_unavailable' });
+    }
+    renderOfflineBanner();
+    showPending();
+  }
+
+  function renderOfflineBanner() {
+    const n = queue().length;
+    app.dataset.online = online ? 'true' : 'false';
+    $('offline-count').textContent = n === 0 ? ''
+      : n === 1 ? '1 Buchung wartet auf Übertragung.' : `${n} Buchungen warten auf Übertragung.`;
+    $('offline-text').textContent = canQueue()
+      ? 'Du kannst trotzdem buchen. Deine Eingabe wird gespeichert und im Nachgang geprüft, sobald das Tablet wieder online ist.'
+      : 'Buchen ist gerade nicht möglich. Bitte später noch einmal versuchen.';
+  }
+
+  function setOnline(flag) {
+    const changed = online !== flag;
+    online = flag;
+    renderOfflineBanner();
+    if (changed) schedulePing();
+    if (flag && queue().length) flushQueue();
+  }
+
+  async function flushQueue() {
+    if (flushing) return;
+    flushing = true;
+    try {
+      while (queue().length) {
+        const batch = queue().slice(0, 50);
+        const res = await request('/api/kiosk/offline-sync', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: batch }),
+        });
+        if (!res.ok) break;
+        const data = await res.json();
+        const done = new Set((data.results || []).map((r) => r.id));
+        store.set(QUEUE_KEY, queue().filter((x) => !done.has(x.id)));
+        if (!done.size) break;
+      }
+    } catch (err) {
+      if (err instanceof OfflineError) { online = false; schedulePing(); }
+    } finally {
+      flushing = false;
+      renderOfflineBanner();
+    }
+  }
+
+  async function ping() {
+    try {
+      const res = await request('/api/kiosk/ping', { method: 'GET' });
+      setOnline(res.ok || res.status === 401);
+    } catch {
+      setOnline(false);
+    }
+  }
+
+  function schedulePing() {
+    clearInterval(state.pingTimer);
+    state.pingTimer = setInterval(ping, online ? PING_ONLINE_MS : PING_OFFLINE_MS);
+  }
+
+  window.addEventListener('offline', () => setOnline(false));
+  window.addEventListener('online', () => ping());
 
   // ---------- Gäste-Formular ----------
   function chip(label, group) {
@@ -358,7 +498,7 @@
     switch (t.dataset.action) {
       case 'delete': return deleteDigit();
       case 'submit': return submitPin();
-      case 'guest': return startGuestPin();
+      case 'guest': return online ? startGuestPin() : showError({ code: 'offline_guest' });
       case 'cancel': return goHome();
       case 'home': return goHome();
       case 'privacy': return openPrivacy();
@@ -381,10 +521,25 @@
     else if (e.key === 'Escape') goHome();
   });
 
-  fetch('/api/kiosk/config', { credentials: 'same-origin' })
-    .then((r) => (r.ok ? r.json() : null))
-    .then((cfg) => { if (cfg) soundsEnabled = cfg.sounds !== false; })
-    .catch(() => {});
+  async function loadConfig() {
+    try {
+      const res = await request('/api/kiosk/config', { method: 'GET' });
+      if (!res.ok) return;
+      const cfg = await res.json();
+      soundsEnabled = cfg.sounds !== false;
+      if (cfg.offlineKey) store.set(KEY_KEY, cfg.offlineKey);
+      setOnline(true);
+    } catch {
+      setOnline(false);
+    }
+  }
+  loadConfig();
+  schedulePing();
+
+  // Tablet-Seite auch ohne WLAN starten können (nicht in der Klick-Demo)
+  if ('serviceWorker' in navigator && window.isSecureContext && !window.KANTINE_DEMO) {
+    navigator.serviceWorker.register('/kiosk-sw.js', { scope: '/kiosk' }).catch(() => {});
+  }
 
   setInterval(setToday, 60 * 1000);
   goHome();

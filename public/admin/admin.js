@@ -127,12 +127,28 @@
     const tbody = $('rows');
     tbody.replaceChildren(...r.rows.map(bookingRow));
     $('rows-empty').hidden = r.rows.length > 0;
+    loadOfflineRejected();
+  }
+
+  async function loadOfflineRejected() {
+    const p = new URLSearchParams({ from: $('f-from').value, to: $('f-to').value });
+    const r = await api(`/api/admin/offline-rejected?${p}`);
+    const rows = r.ok ? r.rows : [];
+    $('offline-rejected').hidden = rows.length === 0;
+    $('offline-rows').replaceChildren(...rows.map((x) => h('tr', {},
+      h('td', { class: 'nowrap' }, deShort(x.date || '')),
+      h('td', {}, x.time || ''),
+      h('td', {}, x.staff_number || '–'),
+      h('td', { class: 'nowrap' }, x.last_name ? `${x.last_name}, ${x.first_name}` : '–'),
+      h('td', {}, x.reason_text),
+    )));
   }
 
   function bookingRow(r) {
     const notes = [];
     if (r.kind === 'meal' && !r.punch_checked) notes.push(h('span', { class: 'tag warn' }, 'Stempelung nicht geprüft'));
     if (r.source === 'admin') notes.push(h('span', { class: 'tag green' }, `Nachgetragen · ${r.comment || ''}`));
+    if (r.source === 'offline') notes.push(h('span', { class: 'tag warn' }, 'Offline erfasst'));
     if (r.kind === 'guest') notes.push(h('span', { class: 'small' }, `${r.paying_company} · ${r.reason}`));
     if (r.cancelled_at) notes.push(h('span', { class: 'tag grey' }, `Storniert · ${r.cancel_comment || ''}`));
 

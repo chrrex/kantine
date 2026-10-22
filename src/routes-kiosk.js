@@ -6,6 +6,7 @@ const { getSetting } = require('./db');
 const { bookMeal, startGuestInvite, completeGuestInvite } = require('./booking');
 const { KIOSK_COOKIE, cookie, kioskAuthorized, kioskCookieValue, requireKiosk } = require('./auth');
 const { safeEqual } = require('./security');
+const offline = require('./offline');
 
 const router = express.Router();
 const publicDir = path.join(__dirname, '..', 'public');
@@ -26,7 +27,25 @@ router.get('/kiosk', (req, res) => {
 });
 
 router.get('/api/kiosk/config', requireKiosk, (req, res) => {
-  res.json({ sounds: getSetting('sounds_enabled') !== '0' });
+  res.json({
+    sounds: getSetting('sounds_enabled') !== '0',
+    offlineKey: offline.publicKeySpki(), // öffentlicher Schlüssel für Offline-Buchungen
+    offlineMaxAgeDays: offline.MAX_AGE_DAYS,
+  });
+});
+
+// Verbindungstest des Tablets
+router.get('/api/kiosk/ping', requireKiosk, (req, res) => res.json({ ok: true }));
+
+// Offline gespeicherte Buchungen nachreichen
+router.post('/api/kiosk/offline-sync', requireKiosk, async (req, res, next) => {
+  try { res.json({ ok: true, results: await offline.processBatch(req.body?.items) }); } catch (err) { next(err); }
+});
+
+// Offline-Start der Tablet-Seite (Service Worker)
+router.get('/kiosk-sw.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(path.join(publicDir, 'kiosk', 'sw.js'));
 });
 
 router.post('/api/kiosk/meal', requireKiosk, async (req, res, next) => {

@@ -122,3 +122,6 @@ textarea {
 .privacy-preview .privacy h1 { font-size: 24px; } .privacy-preview .privacy h2 { font-size: 18px; margin-top: 18px; }
 .privacy-preview .privacy p, .privacy-preview .privacy li { font-size: 15px; }
 code { background: var(--green-tint); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+
+.offline-head { padding: 16px 16px 4px; }
+.offline-head p { margin: 4px 0 8px; }
