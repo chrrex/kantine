@@ -14,6 +14,8 @@ function required(name, fallback) {
 
 const config = {
   port: Number(process.env.PORT ?? 3000),
+  // Adresse, auf der die App lauscht. Hinter einem Webserver (nginx/Caddy) 127.0.0.1 setzen.
+  host: process.env.HOST || undefined,
   timezone: process.env.TIMEZONE || 'Europe/Berlin',
   dataDir: process.env.DATA_DIR || path.join(__dirname, '..', 'data'),
   // Geheimer Schlüssel: verschlüsselt Zugangsdaten in der Datenbank und bildet die Pin-Hashes.

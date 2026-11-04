@@ -46,7 +46,7 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 ensureInitialAdmin();
 if (process.env.NODE_ENV !== 'test') startScheduler();
 
-const server = app.listen(config.port, () => {
+const server = app.listen(config.port, config.host, () => {
   console.log(`Kantinen-App läuft auf http://localhost:${config.port} (Gastromatic: ${gastromatic.isMock ? 'Testdaten' : 'live'})`);
 });
 
