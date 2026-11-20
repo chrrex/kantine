@@ -90,9 +90,11 @@ const files = [];
     else if (!e.name.startsWith('.') && !e.name.endsWith('.txt') || e.name === 'privacy-default.txt') files.push(path.relative(out, p).split(path.sep).join('/'));
   }
 })(out);
-const list = ['./', './kiosk/', './admin/', ...files.filter((f) => !/LICENSE/.test(f)).map((f) => `./${f}`)];
+const list = ['./', './kiosk/', './admin/', ...files.filter((f) => f !== 'version.json').filter((f) => !/LICENSE/.test(f)).map((f) => `./${f}`)];
 
-fs.writeFileSync(path.join(out, 'sw.js'), read(path.join(src, 'sw.js')).replace('__VERSION__', version).replace('__FILES__', JSON.stringify(list, null, 0)));
+// Service Worker bleibt bei jedem Build gleich; die Version steht in version.json (Update nur auf Knopfdruck)
+fs.copyFileSync(path.join(src, 'sw.js'), path.join(out, 'sw.js'));
+fs.writeFileSync(path.join(out, 'version.json'), JSON.stringify({ version, label: stamp, files: list }, null, 1));
 
 // Kopie für GitHub Pages
 const docs = path.join(root, 'docs', 'ipad');

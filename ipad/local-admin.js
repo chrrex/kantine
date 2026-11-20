@@ -326,11 +326,25 @@
       setTimeout(go, 1200);
     });
     $('lv-check').addEventListener('click', async () => {
+      $('lv-install').hidden = true;
       $('lv-result').textContent = 'Suche nach Updates …';
       try {
-        const found = await L().checkUpdate();
-        $('lv-result').textContent = found ? 'Update gefunden, wird geladen …' : 'Du hast die neueste Version.';
-      } catch { $('lv-result').textContent = 'Keine Verbindung – Update-Suche nicht möglich.'; }
+        const r = await L().checkUpdate();
+        if (r.available) {
+          $('lv-result').textContent = `Neue Version verfügbar: ${r.label}.`;
+          $('lv-install').hidden = false;
+        } else $('lv-result').textContent = 'Du hast die neueste Version.';
+      } catch (err) { $('lv-result').textContent = err.message; }
+    });
+    $('lv-install').addEventListener('click', async () => {
+      $('lv-install').disabled = true;
+      $('lv-result').textContent = 'Lade Update herunter …';
+      try {
+        const r = await L().installUpdate();
+        $('lv-result').textContent = `Version ${r.label} installiert. Die App startet neu …`;
+        setTimeout(() => location.reload(), 1200);
+      } catch (err) { $('lv-result').textContent = `Update fehlgeschlagen: ${err.message} Die bisherige Version bleibt aktiv.`; }
+      finally { $('lv-install').disabled = false; }
     });
 
     // ---------- Admin-PIN ändern ----------

@@ -118,17 +118,15 @@
   const persistPromise = (navigator.storage && navigator.storage.persist) ? navigator.storage.persist().catch(() => false) : Promise.resolve(false);
 
   // Offline-Fähigkeit: alle Dateien der App im Gerät zwischenspeichern
-  // Neue Version: der Service Worker übernimmt die Seite, dann meldet sich die App mit „kantine-update-ready“
+  // Updates nur auf Knopfdruck (siehe sw.js). Ändert sich ausnahmsweise sw.js selbst, meldet „kantine-update-ready“ den Neustart.
   const APP_VERSION = '__APP_VERSION__';
-  let swReg = null;
-  if ('serviceWorker' in navigator && window.isSecureContext) {
+    if ('serviceWorker' in navigator && window.isSecureContext) {
     let hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (!hadController) { hadController = true; return; } // allererste Installation, kein Update
       window.dispatchEvent(new Event('kantine-update-ready'));
     });
     navigator.serviceWorker.register(`${scriptBase}../sw.js`, { scope: `${scriptBase}../` })
-      .then((reg) => { swReg = reg; setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000); })
       .catch(() => {});
   }
 
@@ -701,6 +699,21 @@
     return json({ ok: false, error: 'Nicht gefunden.' }, 404);
   }
 
+  function swCall(msg) {
+    return new Promise((resolve, reject) => {
+      const ctl = navigator.serviceWorker && navigator.serviceWorker.controller;
+      if (!ctl) return reject(new Error('Der Offline-Speicher ist noch nicht eingerichtet. Bitte die App einmal schließen und neu öffnen.'));
+      const ch = new MessageChannel();
+      const timer = setTimeout(() => reject(new Error('Keine Antwort – ist das iPad mit dem Internet verbunden?')), 90000);
+      ch.port1.onmessage = (e) => {
+        clearTimeout(timer);
+        if (e.data.ok) resolve(e.data);
+        else reject(new Error(/fetch|network|load/i.test(e.data.error) ? 'Keine Verbindung zum Internet – Update-Suche nicht möglich.' : e.data.error));
+      };
+      ctl.postMessage(msg, [ch.port2]);
+    });
+  }
+
   // ---------- Direkte Funktionen für die Verwaltung (Dateien) ----------
   const guard = async () => { await load(); if (!session.valid()) throw new Error('Bitte erneut anmelden.'); session.touch(); };
   window.kantineLocal = {
@@ -760,12 +773,10 @@
     }),
     persisted: () => persistPromise,
     version: APP_VERSION,
-    /** Sucht sofort nach einer neuen Version. true = Update wird geladen. */
-    checkUpdate: async () => {
-      if (!swReg) return false;
-      await swReg.update();
-      return !!(swReg.installing || swReg.waiting);
-    },
+    /** Fragt die Update-Adresse nach der neuesten Version (installiert nichts). */
+    checkUpdate: () => swCall({ type: 'check' }),
+    /** Lädt die neueste Version vollständig herunter; danach Seite neu laden. */
+    installUpdate: () => swCall({ type: 'install' }),
   };
 
   // ---------- fetch abfangen ----------

@@ -103,6 +103,8 @@ Variante für den Betrieb nur auf einem iPad, ohne Server und ohne Schnittstelle
 - **Datensicherung:** Sicherung als Datei erstellen und im Netzwerkordner ablegen, bei Bedarf wieder einspielen.
 - **Nicht enthalten:** Gastromatic-Abgleich, Stempelprüfung, automatischer Mailversand, mehrere Benutzer, Offline-Nachprüfung.
 
+- **Updates nur auf Knopfdruck:** Settings → App-Version → „Nach Update suchen“ → „Update installieren“. Ohne diesen Schritt bleibt die installierte Version, auch wenn das iPad online ist. Technik: `sw.js` bleibt bei jedem Build gleich, die Version und Dateiliste stehen in `version.json`.
+
 Bauen: `npm run build:ipad` → `dist-ipad/` (zum Hochladen auf einen beliebigen Webspace mit HTTPS) und Kopie in `docs/ipad/` (GitHub Pages). Code: `ipad/`.
 
 Einrichtung am iPad:
