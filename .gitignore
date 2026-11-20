@@ -6,3 +6,4 @@ data/
 *.db-wal
 *.xlsx
 .DS_Store
+dist-ipad/

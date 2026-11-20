@@ -1,0 +1,46 @@
+<section class="card stack local-card">
+        <h2>Mitarbeiterliste</h2>
+        <p class="status-line" id="li-status">–</p>
+        <p class="small muted">Excel (.xlsx) oder CSV mit den Spalten <strong>Personalnummer, Vorname, Nachname, Gesellschaft, PIN</strong> und optional <strong>Aktiv</strong>. Die neue Liste ersetzt die alte: Wer fehlt, kann nicht mehr buchen. Bisherige Buchungen bleiben erhalten.</p>
+        <div class="big-actions">
+          <label class="btn primary file-btn">Datei auswählen …<input type="file" id="li-file" accept=".xlsx,.csv,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+          <button class="btn" type="button" id="li-template">Vorlage herunterladen</button>
+        </div>
+        <div id="li-report" class="stack" hidden></div>
+        <div class="big-actions"><button class="btn primary" type="button" id="li-apply" hidden>Import übernehmen</button><button class="btn" type="button" id="li-discard" hidden>Verwerfen</button></div>
+        <p class="small" id="li-result" role="status"></p>
+        <details id="li-details">
+          <summary class="small">Alle Mitarbeitenden anzeigen</summary>
+          <div class="emp-table pad-top"><table><thead><tr><th>Nr.</th><th>Name</th><th>Gesellschaft</th><th>Status</th></tr></thead><tbody id="li-rows"></tbody></table></div>
+        </details>
+      </section>
+
+      <section class="card stack local-card">
+        <h2>Erinnerung Monatsabrechnung</h2>
+        <label class="field-label" for="lx-day">Fällig ab dem</label>
+        <select id="lx-day"></select>
+        <span class="small muted">Ab diesem Tag erscheint am Tablet und hier ein Hinweis, bis das Excel für den Vormonat erstellt ist. Änderung mit „Änderungen speichern“ übernehmen.</span>
+      </section>
+
+      <section class="card stack local-card">
+        <h2>Datensicherung</h2>
+        <p class="small muted">Alle Daten liegen nur auf diesem iPad. Erstelle regelmäßig eine Sicherung (z. B. nach jeder Monatsabrechnung) und lege sie im Netzwerkordner ab. Bei einem neuen oder zurückgesetzten iPad kannst du sie hier wieder einspielen.</p>
+        <div class="big-actions">
+          <button class="btn" type="button" id="lb-create">Sicherung erstellen</button>
+          <button class="btn primary" type="button" id="lb-share" hidden>Teilen oder speichern …</button>
+          <label class="btn file-btn">Sicherung einspielen …<input type="file" id="lb-file" accept=".json,application/json"></label>
+        </div>
+        <p class="small" id="lb-result" role="status"></p>
+        <p class="small muted" id="lb-persist"></p>
+      </section>
+
+      <section class="card stack local-card">
+        <h2>Admin-PIN</h2>
+        <form id="lp-form" class="stack">
+          <input id="lp-current" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Aktuelle Admin-PIN" aria-label="Aktuelle Admin-PIN">
+          <input id="lp-next" type="password" inputmode="numeric" autocomplete="new-password" placeholder="Neue Admin-PIN (6 bis 12 Ziffern)" aria-label="Neue Admin-PIN">
+          <button class="btn" type="submit">Admin-PIN ändern</button>
+          <p class="small" id="lp-result" role="status"></p>
+        </form>
+        <span class="small muted">Die Verwaltung öffnest du am Tablet, indem du das Logo 3 Sekunden gedrückt hältst. Nach 30 Minuten ohne Eingabe wirst du abgemeldet.</span>
+      </section>

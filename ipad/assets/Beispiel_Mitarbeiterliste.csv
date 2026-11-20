@@ -1,0 +1,6 @@
+Personalnummer;Vorname;Nachname;Gesellschaft;PIN;Aktiv
+1001;Anna;Becker;Schloss & Gut Liebenberg;1111;ja
+1002;Ben;Schulz;Schloss & Gut Liebenberg;2222;ja
+2001;Clara;Wagner;Gutsbetrieb Liebenberg;0333;ja
+1003;David;Klein;Schloss & Gut Liebenberg;4444;nein
+1004;Jörg;Müller;Gutsbetrieb Liebenberg;;ja

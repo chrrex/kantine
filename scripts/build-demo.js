@@ -11,8 +11,9 @@ const root = path.join(__dirname, '..');
 const out = path.join(root, 'docs');
 const pub = path.join(root, 'public');
 
-fs.rmSync(out, { recursive: true, force: true });
+// docs/ipad gehört zur iPad-Version (npm run build:ipad) und bleibt stehen
 fs.mkdirSync(out, { recursive: true });
+for (const entry of fs.readdirSync(out)) if (entry !== 'ipad') fs.rmSync(path.join(out, entry), { recursive: true, force: true });
 
 for (const dir of ['shared', 'kiosk', 'admin']) {
   fs.cpSync(path.join(pub, dir), path.join(out, dir), { recursive: true });

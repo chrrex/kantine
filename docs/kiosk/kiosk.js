@@ -333,8 +333,11 @@
     state.pingTimer = setInterval(ping, online ? PING_ONLINE_MS : PING_OFFLINE_MS);
   }
 
-  window.addEventListener('offline', () => setOnline(false));
-  window.addEventListener('online', () => ping());
+  // In der iPad-Version läuft alles auf dem Gerät: WLAN spielt keine Rolle
+  if (!window.KANTINE_LOCAL) {
+    window.addEventListener('offline', () => setOnline(false));
+    window.addEventListener('online', () => ping());
+  }
 
   // ---------- Gäste-Formular ----------
   function chip(label, group) {
@@ -537,7 +540,7 @@
   schedulePing();
 
   // Tablet-Seite auch ohne WLAN starten können (nicht in der Klick-Demo)
-  if ('serviceWorker' in navigator && window.isSecureContext && !window.KANTINE_DEMO) {
+  if ('serviceWorker' in navigator && window.isSecureContext && !window.KANTINE_DEMO && !window.KANTINE_LOCAL) {
     navigator.serviceWorker.register('/kiosk-sw.js', { scope: '/kiosk' }).catch(() => {});
   }
 

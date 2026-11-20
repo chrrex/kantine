@@ -8,6 +8,8 @@ Grundlage: Lastenheft und Wireframes (Oktober 2026).
 
 Online ohne Server ausprobieren: **https://chrrex.github.io/kantine/** (gleiche Oberfläche, Testdaten nur im eigenen Browser, Gastromatic und Mailversand simuliert). Die Demo liegt in `docs/` und wird mit `npm run build:demo` aus `public/` und `demo/` neu gebaut.
 
+Die iPad-Version ohne Server: **https://chrrex.github.io/kantine/ipad/** (siehe Abschnitt „iPad-Version ohne Server“).
+
 ## Bestandteile
 
 | Bereich | Adresse | Wer |
@@ -88,6 +90,27 @@ Der Abgleich läuft jede Nacht ab 2 Uhr automatisch. Pins werden nur als Hash ge
 - Datenschutzhinweise: am Tablet über den Button „Datenschutz“, in der Verwaltung über den Link „Datenschutz“. Der Text wird im Admin unter **Settings → Datenschutzhinweise** bearbeitet (mit Vorschau); der Standardtext liegt in `public/shared/privacy-default.txt` und ist ein Entwurf, der vor dem Start geprüft werden muss.
 - Schriften werden lokal ausgeliefert (kein Abruf bei Google).
 - Die `.env` und der Ordner `data/` gehören nie ins Repository (stehen in `.gitignore`).
+
+## iPad-Version ohne Server
+
+Variante für den Betrieb nur auf einem iPad, ohne Server und ohne Schnittstellen. Gleiche Oberfläche, aber:
+
+- **Mitarbeiterliste per Datei:** HR spielt eine Excel- (.xlsx) oder CSV-Datei mit den Spalten `Personalnummer, Vorname, Nachname, Gesellschaft, PIN` (optional `Aktiv`) ein, z. B. aus dem Netzwerkordner über die Dateien-App. Vorschau mit Fehlerprüfung (doppelte PINs, fehlende Namen) vor dem Übernehmen. Wer in der neuen Liste fehlt, wird gesperrt; Buchungen bleiben. PINs werden nur als Hash gespeichert.
+- **Daten auf dem Gerät:** Buchungen liegen in der Browser-Datenbank (IndexedDB) des iPads. Läuft komplett ohne WLAN.
+- **Monatsabrechnung per Knopfdruck:** Verwaltung → „Excel erstellen“ → Teilen-Menü („In Dateien sichern“ in den Netzwerkordner oder „Mail“). Zeitraum: seit der letzten Abrechnung bis gestern. Ab dem eingestellten Tag erinnert ein Hinweis am Tablet und in der Verwaltung.
+- **Verwaltung am iPad:** Logo am Tablet 3 Sekunden gedrückt halten. Zugang mit Admin-PIN (6–12 Ziffern) statt E-Mail und Passwort; beim ersten Öffnen wird sie festgelegt, dazu gibt es einen Wiederherstellungscode. Abmeldung nach 30 Minuten.
+- **Datensicherung:** Sicherung als Datei erstellen und im Netzwerkordner ablegen, bei Bedarf wieder einspielen.
+- **Nicht enthalten:** Gastromatic-Abgleich, Stempelprüfung, automatischer Mailversand, mehrere Benutzer, Offline-Nachprüfung.
+
+Bauen: `npm run build:ipad` → `dist-ipad/` (zum Hochladen auf einen beliebigen Webspace mit HTTPS) und Kopie in `docs/ipad/` (GitHub Pages). Code: `ipad/`.
+
+Einrichtung am iPad:
+1. In Safari die Adresse der iPad-Version öffnen (muss HTTPS sein), dann Teilen → „Zum Home-Bildschirm“. Nur so schützt iPadOS die Daten vor automatischem Löschen.
+2. Kantine über das neue Symbol starten, Logo 3 Sekunden halten, Admin-PIN festlegen, Wiederherstellungscode notieren.
+3. Settings → Mitarbeiterliste → Datei auswählen → Import übernehmen.
+4. Geführten Zugriff (Bedienungshilfen) einschalten, damit das iPad in der App bleibt.
+
+Wichtig: Die Daten gibt es nur auf diesem iPad. Regelmäßig (z. B. nach jeder Monatsabrechnung) eine Sicherung erstellen. Die Importdatei enthält PINs im Klartext: nur im HR-Ordner ablegen oder nach dem Import löschen. Safari-Verlauf und Websitedaten nicht löschen.
 
 ## Updates und Freigaben
 

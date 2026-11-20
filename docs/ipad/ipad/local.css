@@ -1,0 +1,25 @@
+/* iPad-Version: Teile der Server-Version ausblenden */
+.local [data-server] { display: none !important; }
+
+/* Tablet */
+.logo { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; transition: opacity .3s, transform .3s; }
+.logo.holding { opacity: .45; transform: scale(.96); transition: opacity 3s linear, transform 3s linear; }
+.local-note {
+  margin: 0 32px; padding: 12px 18px; border-radius: 10px;
+  background: #FFF1D6; color: #1F2419; font-size: 18px; font-weight: 600; text-align: center;
+}
+
+/* Verwaltung */
+.local-due { background: #FFF1D6; color: #1F2419; border-left: 4px solid #C98A00; }
+.local-card .big-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.local-card .report { margin: 0; padding-left: 18px; font-size: 14px; }
+.local-card .report.err li { color: #A23B2A; }
+.local-card .report.warn li { color: #7A5A00; }
+.local-card .file-btn { position: relative; overflow: hidden; }
+.local-card .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 100px; }
+.local-export { margin-bottom: 20px; }
+.local-export .row { flex-wrap: wrap; }
+.recovery-code { font: 700 26px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 2px; padding: 14px; background: #F5F5F0; border-radius: 8px; text-align: center; }
+.emp-table { max-height: 320px; overflow: auto; }
+.emp-table table { font-size: 14px; }
+.back-link { font-weight: 600; }

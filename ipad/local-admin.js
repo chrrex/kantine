@@ -1,0 +1,265 @@
+'use strict';
+/**
+ * Verwaltung in der iPad-Version: Anmeldung mit Admin-PIN, Mitarbeiterliste importieren,
+ * Monatsabrechnung erstellen und teilen, Datensicherung. Wird vor admin.js geladen.
+ */
+(() => {
+  document.documentElement.classList.add('local');
+  const $ = (id) => document.getElementById(id);
+  const L = () => window.kantineLocal;
+  const de = (iso) => (iso ? iso.split('-').reverse().join('.') : '');
+  const dateTimeDe = (ts) => {
+    if (!ts) return '';
+    const d = new Date(ts.includes('T') ? ts : `${ts.replace(' ', 'T')}Z`);
+    return d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+  function h(tag, attrs, ...children) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) if (v !== undefined && v !== null && v !== false) { if (k === 'class') el.className = v; else el.setAttribute(k, v); }
+    for (const c of children.flat()) if (c !== null && c !== undefined && c !== false) el.append(c);
+    return el;
+  }
+  const api = async (path, body) => (await fetch(`../api/${path}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {})).json();
+
+  /** Teilen-Menü (iPad) oder Download. Muss direkt aus einem Tipp aufgerufen werden. */
+  async function shareOrDownload(file, forceDownload = false) {
+    if (!forceDownload && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: file.name });
+        return 'geteilt';
+      } catch (err) {
+        if (err && err.name === 'AbortError') return null;
+      }
+    }
+    const url = URL.createObjectURL(file);
+    const a = h('a', { href: url, download: file.name });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    return 'heruntergeladen';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // ---------- Anmeldung ----------
+    const email = $('login-email');
+    email.required = false; email.type = 'text'; email.value = 'admin';
+    const pw = $('login-password');
+    pw.setAttribute('inputmode', 'numeric');
+    pw.setAttribute('autocomplete', 'off');
+    const pwLabel = document.querySelector('label[for="login-password"]');
+    const submit = document.querySelector('#login-form button[type="submit"]');
+    const hint = h('p', { class: 'small muted', id: 'login-hint' });
+    pw.after(hint);
+    const forgot = h('button', { class: 'link small', type: 'button' }, 'Admin-PIN vergessen?');
+    submit.after(forgot);
+    const back = h('a', { class: 'small back-link', href: '../kiosk/' }, '← Zurück zur Kantine');
+    document.querySelector('.login-card').append(back);
+
+    async function prepareLogin() {
+      const info = await api('local/info').catch(() => ({}));
+      if (info.adminSet === false) {
+        pwLabel.textContent = 'Neue Admin-PIN festlegen (6 bis 12 Ziffern)';
+        hint.textContent = 'Erste Einrichtung: Diese PIN brauchen HR und Direktion künftig für die Verwaltung. Danach erhältst du einen Wiederherstellungscode.';
+        submit.textContent = 'Admin-PIN festlegen';
+        forgot.hidden = true;
+      } else {
+        pwLabel.textContent = 'Admin-PIN';
+        hint.textContent = '';
+        submit.textContent = 'Anmelden';
+        forgot.hidden = false;
+      }
+    }
+    prepareLogin();
+    new MutationObserver(() => { if (!$('view-login').hidden) { prepareLogin(); pw.focus(); } }).observe($('view-login'), { attributes: true, attributeFilter: ['hidden'] });
+
+    window.addEventListener('kantine-recovery', (e) => {
+      $('recovery-code').textContent = e.detail;
+      $('dlg-recovery').showModal();
+    });
+    forgot.addEventListener('click', () => { $('forgot-error').hidden = true; $('forgot-code').value = ''; $('forgot-pin').value = ''; $('dlg-forgot').showModal(); });
+    $('forgot-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const r = await api('local/recover', { code: $('forgot-code').value, pin: $('forgot-pin').value });
+      if (!r.ok) { $('forgot-error').textContent = r.error; $('forgot-error').hidden = false; return; }
+      $('dlg-forgot').close();
+      location.reload();
+    });
+
+    // Navigation: zurück zum Tablet
+    const navSpacer = document.querySelector('.nav .spacer');
+    navSpacer.after(h('a', { class: 'small back-link', href: '../kiosk/' }, 'Zur Kantine'));
+
+    // Statuskarten umbenennen
+    const labels = document.querySelectorAll('.cards .stat-label');
+    if (labels.length === 4) {
+      labels[0].textContent = 'Essen seit letzter Abrechnung';
+      labels[1].textContent = 'Mitarbeiterliste';
+      labels[2].textContent = 'Letzte Abrechnung';
+      labels[3].textContent = 'Abrechnung fällig ab';
+    }
+    let status = null;
+    // admin.js schreibt hier die Server-Texte hinein; wir ersetzen sie (nur wenn nötig, sonst Endlosschleife)
+    function setText(id, text) { if ($(id).textContent !== text) $(id).textContent = text; }
+    function applyStatus() {
+      if (!status) return;
+      setText('st-sync', status.employees ? `${status.employees} mit PIN · ${dateTimeDe(status.sync.at)}` : 'noch nicht importiert');
+      setText('st-export', status.lastExport ? `bis ${de(status.lastExport.period_to)} · ${dateTimeDe(status.lastExport.at)}` : 'noch keine');
+    }
+    for (const id of ['st-sync', 'st-export']) new MutationObserver(applyStatus).observe($(id), { childList: true, characterData: true, subtree: true });
+
+    // ---------- Monatsabrechnung ----------
+    let built = null;
+    async function refresh() {
+      if ($('view-app').hidden) return;
+      const s = await api('admin/status');
+      if (!s.ok) return;
+      status = s;
+      applyStatus();
+      $('lx-due').hidden = !s.exportDue;
+      const p = await L().pendingPeriod().catch(() => null);
+      if (p) $('lx-period').textContent = p.from > p.to ? 'Alles bis gestern ist abgerechnet.' : `Nächste Abrechnung: ${de(p.from)} bis ${de(p.to)} (bis gestern)`;
+      $('li-status').textContent = s.employees ? `${s.employees} Mitarbeitende mit PIN · zuletzt importiert ${dateTimeDe(s.sync.at)}${s.importFile ? ` aus „${s.importFile}“` : ''}` : 'Noch keine Mitarbeiterliste importiert.';
+      $('lb-persist').textContent = s.persisted
+        ? 'Der Speicher ist dauerhaft geschützt.'
+        : 'Hinweis: Die App sollte über „Zum Home-Bildschirm“ gestartet werden, damit iPadOS die Daten nicht automatisch löscht.';
+    }
+    new MutationObserver(refresh).observe($('view-app'), { attributes: true, attributeFilter: ['hidden'] });
+    window.addEventListener('hashchange', refresh);
+
+    const resetExport = () => { built = null; $('lx-share').hidden = true; $('lx-download').hidden = true; $('lx-mark').hidden = true; };
+    $('lx-build').addEventListener('click', async () => {
+      resetExport();
+      $('lx-result').textContent = 'Erstelle Excel …';
+      try {
+        const r = await L().buildExport();
+        if (r.empty) { $('lx-result').textContent = r.message; return; }
+        built = r;
+        $('lx-result').textContent = `${r.file.name} ist bereit: ${r.counts.bookings} Essen, ${r.counts.guests} Gästeessen. Jetzt teilen oder speichern.`;
+        $('lx-share').hidden = !(navigator.canShare && navigator.canShare({ files: [r.file] }));
+        $('lx-download').hidden = false;
+      } catch (err) { $('lx-result').textContent = `Fehler: ${err.message}`; }
+    });
+    async function finish(how) {
+      await L().markExported(built.from, built.to, built.counts, how);
+      $('lx-result').textContent = `Abgerechnet: ${de(built.from)} bis ${de(built.to)}. Danke!`;
+      resetExport();
+      refresh();
+      document.dispatchEvent(new Event('kantine-refresh'));
+    }
+    $('lx-share').addEventListener('click', async () => {
+      if (!built) return;
+      const how = await shareOrDownload(built.file);
+      if (how === 'geteilt') await finish('über Teilen-Menü');
+      else if (how) { $('lx-mark').hidden = false; $('lx-result').textContent = 'Datei heruntergeladen. Wenn sie abgelegt bzw. verschickt ist: „Als abgerechnet markieren“.'; }
+    });
+    $('lx-download').addEventListener('click', async () => {
+      if (!built) return;
+      await shareOrDownload(built.file, true);
+      $('lx-mark').hidden = false;
+      $('lx-result').textContent = 'Datei heruntergeladen. Wenn sie abgelegt bzw. verschickt ist: „Als abgerechnet markieren“.';
+    });
+    $('lx-mark').addEventListener('click', () => built && finish('heruntergeladen'));
+
+    // ---------- Mitarbeiterliste ----------
+    let pendingFile = null;
+    function report(r) {
+      const box = $('li-report');
+      const parts = [];
+      const s = r.summary;
+      if (s) {
+        parts.push(h('p', {}, h('strong', {}, `${s.total} Personen erkannt`), ` · ${s.active} aktiv · ${s.withPin} mit PIN · ${s.added} neu · ${s.deactivated} werden gesperrt (fehlen in der Liste)`));
+        if (s.companies.length) parts.push(h('p', { class: 'small' }, `Gesellschaften: ${s.companies.join(', ')}`));
+      }
+      if (r.errors.length) parts.push(h('p', { class: 'error small' }, 'Bitte die Datei korrigieren und erneut auswählen:'), h('ul', { class: 'report err' }, r.errors.slice(0, 30).map((t) => h('li', {}, t))));
+      if (r.warnings.length) parts.push(h('ul', { class: 'report warn' }, r.warnings.slice(0, 30).map((t) => h('li', {}, t))));
+      box.replaceChildren(...parts);
+      box.hidden = false;
+    }
+    $('li-file').addEventListener('change', async () => {
+      const file = $('li-file').files[0];
+      $('li-file').value = '';
+      if (!file) return;
+      pendingFile = null; $('li-apply').hidden = true; $('li-discard').hidden = true;
+      $('li-result').textContent = `Prüfe „${file.name}“ …`;
+      try {
+        const r = await L().previewImport(file);
+        report(r);
+        if (r.ok) { pendingFile = file; $('li-apply').hidden = false; $('li-discard').hidden = false; $('li-result').textContent = 'Vorschau – noch nichts übernommen.'; } else $('li-result').textContent = '';
+      } catch (err) { $('li-report').hidden = true; $('li-result').textContent = `Fehler: ${err.message}`; }
+    });
+    $('li-discard').addEventListener('click', () => { pendingFile = null; $('li-apply').hidden = true; $('li-discard').hidden = true; $('li-report').hidden = true; $('li-result').textContent = 'Verworfen.'; });
+    $('li-apply').addEventListener('click', async () => {
+      if (!pendingFile) return;
+      try {
+        const r = await L().applyImport(pendingFile);
+        report(r);
+        $('li-result').textContent = r.applied ? 'Mitarbeiterliste übernommen.' : 'Nicht übernommen.';
+        if (r.applied) { pendingFile = null; $('li-apply').hidden = true; $('li-discard').hidden = true; refresh(); loadEmployees(); document.dispatchEvent(new Event('kantine-refresh')); }
+      } catch (err) { $('li-result').textContent = `Fehler: ${err.message}`; }
+    });
+    $('li-template').addEventListener('click', async () => {
+      try { await shareOrDownload(await L().template()); } catch (err) { $('li-result').textContent = `Fehler: ${err.message}`; }
+    });
+    async function loadEmployees() {
+      const r = await (await fetch('../api/admin/employees?q=')).json();
+      if (!r.ok) return;
+      $('li-rows').replaceChildren(...r.rows.map((e) => h('tr', {},
+        h('td', {}, e.staff_number || ''), h('td', { class: 'nowrap' }, `${e.last_name}, ${e.first_name}`), h('td', {}, e.company),
+        h('td', {}, e.is_active ? (e.has_pin ? 'aktiv' : 'aktiv, ohne PIN') : 'gesperrt'))));
+    }
+    $('li-details').addEventListener('toggle', () => { if ($('li-details').open) loadEmployees(); });
+
+    // ---------- Erinnerungstag (spiegelt das versteckte Feld der Server-Version) ----------
+    const day = $('lx-day');
+    for (let d = 1; d <= 28; d++) day.append(h('option', { value: String(d) }, `${d}. des Monats`));
+    const sendDay = $('s-send-day');
+    const syncDay = () => { if (sendDay.value) day.value = sendDay.value; };
+    new MutationObserver(syncDay).observe(sendDay, { childList: true });
+    sendDay.addEventListener('change', syncDay);
+    window.addEventListener('hashchange', () => setTimeout(syncDay, 300));
+    day.addEventListener('change', () => { sendDay.value = day.value; sendDay.dispatchEvent(new Event('change')); });
+    setInterval(() => { if (document.activeElement !== day && sendDay.value && day.value !== sendDay.value) syncDay(); }, 1000);
+
+    // ---------- Datensicherung ----------
+    let backupFile = null;
+    $('lb-create').addEventListener('click', async () => {
+      try {
+        backupFile = await L().backup();
+        if (navigator.canShare && navigator.canShare({ files: [backupFile] })) {
+          $('lb-share').hidden = false;
+          $('lb-result').textContent = `${backupFile.name} ist bereit.`;
+        } else {
+          await shareOrDownload(backupFile);
+          $('lb-result').textContent = `${backupFile.name} wurde heruntergeladen.`;
+        }
+      } catch (err) { $('lb-result').textContent = `Fehler: ${err.message}`; }
+    });
+    $('lb-share').addEventListener('click', async () => {
+      if (!backupFile) return;
+      const how = await shareOrDownload(backupFile);
+      if (how) { $('lb-result').textContent = `Sicherung ${how}.`; $('lb-share').hidden = true; }
+    });
+    $('lb-file').addEventListener('change', async () => {
+      const file = $('lb-file').files[0];
+      $('lb-file').value = '';
+      if (!file) return;
+      if (!confirm(`Sicherung „${file.name}“ einspielen? Alle aktuellen Daten auf diesem iPad werden dadurch ersetzt.`)) return;
+      try {
+        const r = await L().restore(file);
+        alert(`Sicherung vom ${dateTimeDe(r.created)} eingespielt (${r.bookings} Buchungen). Bitte mit der Admin-PIN aus dieser Sicherung anmelden.`);
+        location.reload();
+      } catch (err) { $('lb-result').textContent = `Fehler: ${err.message}`; }
+    });
+
+    // ---------- Admin-PIN ändern ----------
+    $('lp-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const code = await L().changePin($('lp-current').value, $('lp-next').value);
+        $('lp-current').value = ''; $('lp-next').value = '';
+        $('lp-result').textContent = 'Admin-PIN geändert.';
+        $('recovery-code').textContent = code;
+        $('dlg-recovery').showModal();
+      } catch (err) { $('lp-result').textContent = err.message; }
+    });
+  });
+})();

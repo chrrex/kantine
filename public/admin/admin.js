@@ -447,6 +447,10 @@
     gastromatic_sync: 'Mitarbeiter abgeglichen', user_created: 'Benutzer angelegt', user_deleted: 'Benutzer entfernt',
     password_changed: 'Passwort geändert',
     privacy_changed: 'Datenschutzhinweise geändert', privacy_reset: 'Datenschutzhinweise zurückgesetzt',
+    // iPad-Version
+    employees_imported: 'Mitarbeiterliste importiert', admin_pin_set: 'Admin-PIN festgelegt', admin_pin_changed: 'Admin-PIN geändert',
+    admin_pin_recovered: 'Admin-PIN neu festgelegt (Wiederherstellungscode)', backup_created: 'Sicherung erstellt',
+    backup_restored: 'Sicherung eingespielt', cleanup: 'Alte Daten gelöscht (Löschfrist)',
   };
   async function loadAudit() {
     const r = await api('/api/admin/audit');
@@ -458,6 +462,9 @@
       h('td', { class: 'details' }, a.details || ''),
     )));
   }
+
+  // Die iPad-Version meldet so, dass sich Daten geändert haben (Import, Abrechnung)
+  document.addEventListener('kantine-refresh', () => { companiesLoaded = false; if (!$('tab-buchungen').hidden) loadBookingsTab(); });
 
   window.addEventListener('beforeunload', (e) => { if (dirty || privacyDirty) e.preventDefault(); });
 

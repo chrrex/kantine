@@ -1,0 +1,22 @@
+{
+  "name": "Kantine Liebenberg",
+  "short_name": "Kantine",
+  "start_url": "./",
+  "scope": "../",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#F5F5F0",
+  "theme_color": "#6B7A3E",
+  "icons": [
+    {
+      "src": "../ipad/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "../ipad/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

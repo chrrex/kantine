@@ -1,0 +1,19 @@
+<dialog id="dlg-recovery">
+  <form method="dialog" class="stack">
+    <h2>Wiederherstellungscode</h2>
+    <p>Mit diesem Code kannst du eine neue Admin-PIN festlegen, falls die PIN vergessen wird. Bitte aufschreiben und sicher verwahren (z. B. im Tresor oder bei der Direktion). Er wird nur jetzt angezeigt.</p>
+    <div class="recovery-code" id="recovery-code"></div>
+    <div class="row end"><button class="btn primary" type="submit">Ich habe den Code notiert</button></div>
+  </form>
+</dialog>
+<dialog id="dlg-forgot">
+  <form method="dialog" id="forgot-form" class="stack">
+    <h2>Admin-PIN vergessen</h2>
+    <label class="field-label" for="forgot-code">Wiederherstellungscode</label>
+    <input id="forgot-code" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX">
+    <label class="field-label" for="forgot-pin">Neue Admin-PIN (6 bis 12 Ziffern)</label>
+    <input id="forgot-pin" type="password" inputmode="numeric" autocomplete="new-password">
+    <p class="error small" id="forgot-error" role="alert" hidden></p>
+    <div class="row end"><button class="btn" type="button" data-close>Abbrechen</button><button class="btn primary" type="submit" value="ok">PIN festlegen</button></div>
+  </form>
+</dialog>

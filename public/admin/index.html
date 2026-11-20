@@ -19,8 +19,8 @@
       <p class="muted">Nur für HR und Direktion</p>
     </div>
     <form id="login-form" class="stack">
-      <label class="field-label" for="login-email">E-Mail</label>
-      <input id="login-email" type="email" autocomplete="username" required>
+      <label class="field-label" for="login-email" data-server>E-Mail</label>
+      <input id="login-email" data-server type="email" autocomplete="username" required>
       <label class="field-label" for="login-password">Passwort</label>
       <input id="login-password" type="password" autocomplete="current-password" required>
       <p class="error" id="login-error" role="alert" hidden></p>
@@ -44,7 +44,7 @@
       <button class="link" type="button" id="logout">Abmelden</button>
     </div>
   </nav>
-  <div class="banner" id="mock-banner" hidden>Testmodus: Gastromatic ist noch nicht angebunden, es werden Testdaten verwendet.</div>
+  <div class="banner" id="mock-banner" data-server hidden>Testmodus: Gastromatic ist noch nicht angebunden, es werden Testdaten verwendet.</div>
 
   <!-- Buchungen -->
   <main class="page" id="tab-buchungen" hidden>
@@ -55,6 +55,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Excel herunterladen
       </button>
     </div>
+    <!-- local-export -->
     <section class="cards" aria-label="Status">
       <div class="card stat"><span class="stat-label">Essen seit letztem Versand</span><span class="stat-value" id="st-meals">–</span><span class="small muted" id="st-guests"></span></div>
       <div class="card stat"><span class="stat-label">Gastromatic-Abgleich</span><span class="stat-text" id="st-sync">–</span></div>
@@ -97,7 +98,8 @@
       <button class="btn primary" type="button" id="save-settings">Änderungen speichern</button>
     </div>
     <div class="grid">
-      <section class="card stack">
+      <!-- local-settings -->
+      <section class="card stack" data-server>
         <h2>Excel-Versand</h2>
         <label class="field-label" for="s-send-day">Versandtag im Monat</label>
         <select id="s-send-day"></select>
@@ -117,7 +119,7 @@
         <p class="small" id="mail-result" role="status"></p>
       </section>
 
-      <section class="card stack">
+      <section class="card stack" data-server>
         <h2>Gastromatic</h2>
         <p class="small muted" id="g-mode"></p>
         <label class="field-label" for="s-g-id">Client ID</label>
@@ -142,7 +144,7 @@
         <span class="small muted">„Sonstiges“ mit Freitext steht immer zur Auswahl.</span>
       </section>
 
-      <section class="card stack">
+      <section class="card stack" data-server>
         <h2>Benutzer Admin-Bereich</h2>
         <ul class="list" id="users"></ul>
         <form id="user-form" class="stack">
@@ -167,9 +169,9 @@
 
       <section class="card stack">
         <h2>Tablet und Datenschutz</h2>
-        <div class="field-label">Freischalt-Link für das Kantinen-Tablet</div>
-        <div class="row"><input id="kiosk-url" readonly aria-label="Freischalt-Link"><button class="btn" type="button" id="copy-kiosk">Kopieren</button></div>
-        <span class="small muted">Einmal auf dem Tablet öffnen, danach als App zum Startbildschirm hinzufügen. Link nicht weitergeben.</span>
+        <div class="field-label" data-server>Freischalt-Link für das Kantinen-Tablet</div>
+        <div class="row" data-server><input id="kiosk-url" readonly aria-label="Freischalt-Link"><button class="btn" type="button" id="copy-kiosk">Kopieren</button></div>
+        <span class="small muted" data-server>Einmal auf dem Tablet öffnen, danach als App zum Startbildschirm hinzufügen. Link nicht weitergeben.</span>
         <label class="check"><input type="checkbox" id="s-sounds"> Töne am Tablet</label>
         <label class="field-label" for="s-retention">Buchungen und Gästedaten löschen nach (Monaten)</label>
         <input id="s-retention" type="number" min="1" max="120">
