@@ -43,6 +43,15 @@
     refresh();
     setInterval(refresh, 10 * 60 * 1000);
 
+    // Update geladen: neu starten, sobald niemand am Tablet tippt
+    window.addEventListener('kantine-update-ready', () => {
+      const tryReload = () => {
+        const idle = document.getElementById('screen-pin')?.hasAttribute('data-active') && !document.querySelector('.dots .filled');
+        if (idle) location.reload(); else setTimeout(tryReload, 10000);
+      };
+      tryReload();
+    });
+
     // Einmal pro Nacht neu laden, damit Updates der App ankommen (nur wenn gerade niemand tippt)
     const started = Date.now();
     setInterval(() => {

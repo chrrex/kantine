@@ -317,6 +317,22 @@
       } catch (err) { $('lb-result').textContent = `Fehler: ${err.message}`; }
     });
 
+    // ---------- Version und Updates ----------
+    $('lv-version').textContent = L().version;
+    window.addEventListener('kantine-update-ready', () => {
+      $('lv-result').textContent = 'Neue Version geladen – die Seite startet neu …';
+      const busy = () => [...document.querySelectorAll('dialog')].some((d) => d.open);
+      const go = () => (busy() ? setTimeout(go, 5000) : location.reload());
+      setTimeout(go, 1200);
+    });
+    $('lv-check').addEventListener('click', async () => {
+      $('lv-result').textContent = 'Suche nach Updates …';
+      try {
+        const found = await L().checkUpdate();
+        $('lv-result').textContent = found ? 'Update gefunden, wird geladen …' : 'Du hast die neueste Version.';
+      } catch { $('lv-result').textContent = 'Keine Verbindung – Update-Suche nicht möglich.'; }
+    });
+
     // ---------- Admin-PIN ändern ----------
     $('lp-form').addEventListener('submit', async (e) => {
       e.preventDefault();

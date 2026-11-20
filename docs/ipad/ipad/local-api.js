@@ -118,8 +118,18 @@
   const persistPromise = (navigator.storage && navigator.storage.persist) ? navigator.storage.persist().catch(() => false) : Promise.resolve(false);
 
   // Offline-Fähigkeit: alle Dateien der App im Gerät zwischenspeichern
+  // Neue Version: der Service Worker übernimmt die Seite, dann meldet sich die App mit „kantine-update-ready“
+  const APP_VERSION = '20.11.2026, 10:16 (mworm3tv)';
+  let swReg = null;
   if ('serviceWorker' in navigator && window.isSecureContext) {
-    navigator.serviceWorker.register(`${scriptBase}../sw.js`, { scope: `${scriptBase}../` }).catch(() => {});
+    let hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) { hadController = true; return; } // allererste Installation, kein Update
+      window.dispatchEvent(new Event('kantine-update-ready'));
+    });
+    navigator.serviceWorker.register(`${scriptBase}../sw.js`, { scope: `${scriptBase}../` })
+      .then((reg) => { swReg = reg; setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000); })
+      .catch(() => {});
   }
 
   const audit = (actor, action, details) => {
@@ -749,6 +759,13 @@
       return code;
     }),
     persisted: () => persistPromise,
+    version: APP_VERSION,
+    /** Sucht sofort nach einer neuen Version. true = Update wird geladen. */
+    checkUpdate: async () => {
+      if (!swReg) return false;
+      await swReg.update();
+      return !!(swReg.installing || swReg.waiting);
+    },
   };
 
   // ---------- fetch abfangen ----------

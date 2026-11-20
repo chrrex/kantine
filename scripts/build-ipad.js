@@ -12,6 +12,8 @@ const out = path.join(root, 'dist-ipad');
 const pub = path.join(root, 'public');
 const src = path.join(root, 'ipad');
 const read = (f) => fs.readFileSync(f, 'utf8');
+const version = Date.now().toString(36);
+const stamp = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
 
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
@@ -19,6 +21,7 @@ for (const dir of ['shared', 'kiosk', 'admin']) fs.cpSync(path.join(pub, dir), p
 fs.rmSync(path.join(out, 'kiosk', 'sw.js'), { force: true });
 fs.mkdirSync(path.join(out, 'ipad'), { recursive: true });
 for (const f of ['local-api.js', 'local-admin.js', 'local-kiosk.js', 'local.css']) fs.copyFileSync(path.join(src, f), path.join(out, 'ipad', f));
+fs.writeFileSync(path.join(out, 'ipad', 'local-api.js'), read(path.join(out, 'ipad', 'local-api.js')).replace('__APP_VERSION__', `${stamp} (${version})`));
 fs.cpSync(path.join(src, 'assets'), path.join(out, 'ipad'), { recursive: true });
 // Datenschutz-Standardtext ohne Gastromatic und Server
 fs.copyFileSync(path.join(src, 'privacy-default.txt'), path.join(out, 'shared', 'privacy-default.txt'));
@@ -88,7 +91,7 @@ const files = [];
   }
 })(out);
 const list = ['./', './kiosk/', './admin/', ...files.filter((f) => !/LICENSE/.test(f)).map((f) => `./${f}`)];
-const version = Date.now().toString(36);
+
 fs.writeFileSync(path.join(out, 'sw.js'), read(path.join(src, 'sw.js')).replace('__VERSION__', version).replace('__FILES__', JSON.stringify(list, null, 0)));
 
 // Kopie für GitHub Pages
