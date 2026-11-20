@@ -235,13 +235,45 @@
       try { await shareOrDownload(await L().template()); } catch (err) { $('li-result').textContent = `Fehler: ${err.message}`; }
     });
     async function loadEmployees() {
-      const r = await (await fetch('../api/admin/employees?q=')).json();
+      const r = await (await fetch(`../api/admin/employees?q=${encodeURIComponent($('li-search').value)}`)).json();
       if (!r.ok) return;
-      $('li-rows').replaceChildren(...r.rows.map((e) => h('tr', {},
-        h('td', {}, e.staff_number || ''), h('td', { class: 'nowrap' }, `${e.last_name}, ${e.first_name}`), h('td', {}, e.company),
-        h('td', {}, e.is_active ? (e.has_pin ? 'aktiv' : 'aktiv, ohne PIN') : 'gesperrt'))));
+      $('li-rows').replaceChildren(...r.rows.map((e) => {
+        const del = h('button', { class: 'link danger-link', type: 'button' }, 'Löschen');
+        del.addEventListener('click', async () => {
+          if (!confirm(`${e.first_name} ${e.last_name} löschen? Die Person kann danach nicht mehr buchen. Bereits gebuchte Essen bleiben für die Abrechnung erhalten.`)) return;
+          try {
+            const res = await L().deleteEmployee(e.id);
+            $('li-del-result').textContent = `${e.first_name} ${e.last_name} gelöscht.${res.keptForBookings ? ' Die bisherigen Buchungen bleiben in der Abrechnung, bis die Löschfrist abläuft.' : ''}`;
+            loadEmployees();
+            document.dispatchEvent(new Event('kantine-refresh'));
+          } catch (err) { $('li-del-result').textContent = `Fehler: ${err.message}`; }
+        });
+        return h('tr', {},
+          h('td', {}, e.staff_number || ''), h('td', { class: 'nowrap' }, `${e.last_name}, ${e.first_name}`), h('td', {}, e.company),
+          h('td', {}, e.is_active ? (e.has_pin ? 'aktiv' : 'aktiv, ohne PIN') : 'gesperrt'), h('td', {}, del));
+      }));
     }
     $('li-details').addEventListener('toggle', () => { if ($('li-details').open) loadEmployees(); });
+    let searchTimer;
+    $('li-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadEmployees, 200); });
+
+    // Person hinzufügen
+    async function loadCompanies() {
+      const r = await (await fetch('../api/admin/companies')).json();
+      if (r.ok) $('ea-companies').replaceChildren(...r.rows.map((c) => h('option', { value: c.name })));
+    }
+    $('li-add').addEventListener('toggle', () => { if ($('li-add').open) { loadCompanies(); $('ea-first').focus(); } });
+    $('ea-form').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      try {
+        const r = await L().addEmployee({ first_name: $('ea-first').value, last_name: $('ea-last').value, staff_number: $('ea-nr').value, pin: $('ea-pin').value, company: $('ea-company').value });
+        $('ea-result').textContent = `${r.name} ${r.revived ? 'wieder aktiviert' : 'hinzugefügt'} – kann jetzt am Tablet buchen.`;
+        for (const id of ['ea-first', 'ea-last', 'ea-nr', 'ea-pin']) $(id).value = '';
+        loadCompanies();
+        if ($('li-details').open) loadEmployees();
+        document.dispatchEvent(new Event('kantine-refresh'));
+      } catch (err) { $('ea-result').textContent = err.message; }
+    });
 
     // ---------- Erinnerungstag (spiegelt das versteckte Feld der Server-Version) ----------
     const day = $('lx-day');

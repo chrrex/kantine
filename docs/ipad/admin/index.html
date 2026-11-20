@@ -125,9 +125,27 @@
         <div id="li-report" class="stack" hidden></div>
         <div class="big-actions"><button class="btn primary" type="button" id="li-apply" hidden>Import übernehmen</button><button class="btn" type="button" id="li-discard" hidden>Verwerfen</button></div>
         <p class="small" id="li-result" role="status"></p>
+        <details id="li-add">
+          <summary class="small">Person hinzufügen</summary>
+          <form id="ea-form" class="stack pad-top" autocomplete="off">
+            <div class="two">
+              <input id="ea-first" placeholder="Vorname" aria-label="Vorname" required>
+              <input id="ea-last" placeholder="Nachname" aria-label="Nachname" required>
+              <input id="ea-nr" placeholder="Personalnummer (optional)" aria-label="Personalnummer" inputmode="numeric">
+              <input id="ea-pin" placeholder="Terminal-PIN" aria-label="Terminal-PIN" inputmode="numeric" required>
+              <input id="ea-company" class="span2" list="ea-companies" placeholder="Gesellschaft (auswählen oder neu eintippen)" aria-label="Gesellschaft">
+            </div>
+            <datalist id="ea-companies"></datalist>
+            <button class="btn primary" type="submit">Hinzufügen</button>
+            <p class="small" id="ea-result" role="status"></p>
+            <span class="small muted">Achtung: Beim nächsten Import der Mitarbeiterliste wird gesperrt, wer nicht in der Datei steht – auch hier hinzugefügte Personen.</span>
+          </form>
+        </details>
         <details id="li-details">
-          <summary class="small">Alle Mitarbeitenden anzeigen</summary>
-          <div class="emp-table pad-top"><table><thead><tr><th>Nr.</th><th>Name</th><th>Gesellschaft</th><th>Status</th></tr></thead><tbody id="li-rows"></tbody></table></div>
+          <summary class="small">Alle Mitarbeitenden anzeigen und löschen</summary>
+          <input id="li-search" class="pad-top" type="search" placeholder="Name oder Personalnummer suchen" aria-label="Mitarbeitende suchen">
+          <div class="emp-table pad-top"><table><thead><tr><th>Nr.</th><th>Name</th><th>Gesellschaft</th><th>Status</th><th><span class="sr-only">Aktion</span></th></tr></thead><tbody id="li-rows"></tbody></table></div>
+          <p class="small" id="li-del-result" role="status"></p>
         </details>
       </section>
 

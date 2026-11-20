@@ -32,3 +32,5 @@
 .month-table td, .month-table tfoot th { vertical-align: middle; }
 .month-table tbody td { padding-top: 10px; padding-bottom: 10px; }
 .month-table tfoot th { font-size: inherit; color: inherit; text-transform: none; letter-spacing: 0; }
+.danger-link { color: #A23B2A; }
+#li-search { width: 100%; }

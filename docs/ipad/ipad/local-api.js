@@ -329,6 +329,8 @@
   }
   const truthy = (v) => { const n = norm(v); if (!n) return true; return !['0', 'nein', 'no', 'false', 'inaktiv', 'ausgetreten', 'deaktiviert', 'n'].includes(n); };
 
+  const key = (r) => (r.staff_number ? `nr:${r.staff_number}` : `name:${norm(r.last_name)}|${norm(r.first_name)}|${norm(r.company)}`);
+
   /** Liest die Datei und prüft sie. Ohne apply wird nichts gespeichert (Vorschau). */
   async function importEmployees(file, apply) {
     const rows = await readTable(file);
@@ -350,7 +352,6 @@
       list.push(rec);
     });
     if (!list.length) errors.push('Die Datei enthält keine Mitarbeitenden.');
-    const key = (r) => (r.staff_number ? `nr:${r.staff_number}` : `name:${norm(r.last_name)}|${norm(r.first_name)}|${norm(r.company)}`);
     const seenKey = new Map(); const seenPin = new Map();
     for (const r of list) {
       const k = key(r);
@@ -388,7 +389,7 @@
       Object.assign(e, {
         staff_number: r.staff_number, first_name: r.first_name, last_name: r.last_name,
         company_id: companies.get(r.company).id, is_active: r.active ? 1 : 0,
-        pin_hash: r.pin && r.active ? await pinHash(r.pin) : null,
+        pin_hash: r.pin && r.active ? await pinHash(r.pin) : null, deleted: false,
       });
     }
     db.settings.last_import_at = new Date().toISOString();
@@ -396,6 +397,44 @@
     audit('Admin', 'employees_imported', { file: file.name, total: summary.total, active: summary.active, added: summary.added, deactivated: summary.deactivated });
     await save();
     return { ok: true, errors, warnings, summary, applied: true };
+  }
+
+  /** Einzelne Person von Hand anlegen (oder eine gesperrte/gelöschte Person wieder aktivieren). */
+  async function addEmployee(input) {
+    const r = {
+      staff_number: clean(input.staff_number, 30), first_name: clean(input.first_name, 60), last_name: clean(input.last_name, 60),
+      company: clean(input.company, 80) || 'Ohne Gesellschaft', pin: String(input.pin ?? '').replace(/\s/g, ''),
+    };
+    if (!r.last_name) throw new Error('Bitte einen Nachnamen eingeben.');
+    if (!r.first_name) throw new Error('Bitte einen Vornamen eingeben.');
+    if (!/^\d{3,10}$/.test(r.pin)) throw new Error('Die PIN braucht 3 bis 10 Ziffern.');
+    const k = key(r);
+    let e = db.employees.find((x) => x.key === k);
+    if (e && e.is_active && !e.deleted) throw new Error(r.staff_number ? `Personalnummer ${r.staff_number} ist schon vergeben (${e.first_name} ${e.last_name}).` : `${r.first_name} ${r.last_name} ist schon in der Liste.`);
+    const hash = await pinHash(r.pin);
+    const clash = db.employees.find((x) => x !== e && x.is_active && x.pin_hash === hash);
+    if (clash) throw new Error(`Diese PIN ist schon an ${clash.first_name} ${clash.last_name} vergeben. Jede PIN darf nur einmal vorkommen.`);
+    let c = db.companies.find((x) => x.name.toLowerCase() === r.company.toLowerCase());
+    if (!c) { c = { id: `c-${randomHex(6)}`, name: r.company }; db.companies.push(c); }
+    const revived = !!e;
+    if (!e) { e = { id: `e-${randomHex(8)}`, key: k }; db.employees.push(e); }
+    Object.assign(e, { staff_number: r.staff_number, first_name: r.first_name, last_name: r.last_name, company_id: c.id, is_active: 1, pin_hash: hash, deleted: false, manual: true });
+    audit('Admin', 'employee_added', { name: `${r.first_name} ${r.last_name}`, nr: r.staff_number, company: c.name, wieder_aktiviert: revived || undefined });
+    await save();
+    return { name: `${r.first_name} ${r.last_name}`, revived };
+  }
+
+  /** Person löschen. Hat sie noch Buchungen, bleibt nur der Name für die Abrechnung erhalten,
+      bis die Buchungen nach der Löschfrist verschwinden. */
+  async function deleteEmployee(id) {
+    const e = db.employees.find((x) => x.id === id);
+    if (!e) throw new Error('Person nicht gefunden.');
+    const used = db.bookings.some((b) => b.employee_id === id) || db.guests.some((g) => g.host_employee_id === id);
+    if (used) Object.assign(e, { is_active: 0, pin_hash: null, deleted: true });
+    else db.employees = db.employees.filter((x) => x.id !== id);
+    audit('Admin', 'employee_deleted', { name: `${e.first_name} ${e.last_name}`, nr: e.staff_number, buchungen_bleiben: used || undefined });
+    await save();
+    return { keptForBookings: used };
   }
 
   async function templateFile() {
@@ -558,7 +597,7 @@
     if (path === 'admin/companies') return json({ ok: true, rows: [...db.companies].sort((a, b) => a.name.localeCompare(b.name, 'de')) });
     if (path === 'admin/employees') {
       const q = clean(query.get('q')).toLowerCase();
-      const rows = db.employees.filter((e) => `${e.first_name} ${e.last_name} ${e.last_name} ${e.first_name} ${e.staff_number}`.toLowerCase().includes(q))
+      const rows = db.employees.filter((e) => !e.deleted && `${e.first_name} ${e.last_name} ${e.last_name} ${e.first_name} ${e.staff_number}`.toLowerCase().includes(q))
         .sort((a, b) => b.is_active - a.is_active || a.last_name.localeCompare(b.last_name, 'de'))
         .map((e) => ({ id: e.id, staff_number: e.staff_number, first_name: e.first_name, last_name: e.last_name, is_active: e.is_active, has_pin: !!e.pin_hash, company: companyName(e) }));
       return json({ ok: true, rows });
@@ -659,6 +698,8 @@
     previewImport: (file) => serial(async () => { await guard(); return importEmployees(file, false); }),
     applyImport: (file) => serial(async () => { await guard(); return importEmployees(file, true); }),
     template: () => serial(async () => { await guard(); return templateFile(); }),
+    addEmployee: (data) => serial(async () => { await guard(); return addEmployee(data); }),
+    deleteEmployee: (id) => serial(async () => { await guard(); return deleteEmployee(id); }),
     /** Erstellt das Excel für einen Monat ('YYYY-MM') oder für alle gespeicherten Daten ('all'). */
     buildExport: (key) => serial(async () => {
       await guard();
