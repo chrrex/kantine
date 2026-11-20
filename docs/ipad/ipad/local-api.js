@@ -59,7 +59,7 @@
         paying_companies: ['Schloss & Gut Liebenberg', 'DKB STIFTUNG'],
         reasons: ['Bewerbungsgespräch', 'Geschäftspartner', 'Probearbeiten'],
         retention_months: '12', sounds_enabled: '1', privacy_text: '',
-        last_export_to: '', last_import_at: '', last_import_file: '', last_cleanup: '',
+        last_import_at: '', last_import_file: '', last_cleanup: '',
       },
       admin: null, // { hash, salt, recoveryHash }
       exports: [], audit: [],
@@ -226,28 +226,38 @@
     return { buffer: await wb.xlsx.writeBuffer(), filename: `Kantine_${from}_bis_${to}.xlsx`, counts: { bookings: rows.length, guests: guests.length } };
   }
 
-  function pendingPeriod() {
-    const to = addDays(today(), -1);
-    let from = db.settings.last_export_to ? addDays(db.settings.last_export_to, 1) : '';
-    if (!from) {
-      const first = [...db.bookings, ...db.guests].map((x) => x.date).sort()[0];
-      from = first && first < to ? first : to;
-    }
-    return { from, to };
+  const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+  const monthLabel = (m) => `${MONTHS[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`;
+  const monthStart = () => `${today().slice(0, 8)}01`;
+  function monthRange(m) {
+    const last = new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0)).getUTCDate();
+    const to = `${m}-${String(last).padStart(2, '0')}`;
+    return { from: `${m}-01`, to: to > today() ? today() : to };
   }
-  /** Fälligkeit des Monats-Exports: ab dem eingestellten Tag, bis bis zum Vortag exportiert ist. */
+  const active = (x) => !x.cancelled_at;
+  /** Letzter Export genau dieses Monats („Alle Daten“ zählt nicht als Monatsabrechnung). */
+  const lastExportOf = (m) => db.exports.filter((x) => x.month === m).map((x) => x.at).sort().pop() || null;
+  /** Monate mit Buchungen, neuester zuerst. */
+  function monthList() {
+    const map = new Map();
+    const bump = (d, k) => { const m = d.slice(0, 7); const r = map.get(m) || { month: m, meals: 0, guests: 0 }; r[k]++; map.set(m, r); };
+    db.bookings.filter(active).forEach((b) => bump(b.date, 'meals'));
+    db.guests.filter(active).forEach((g) => bump(g.date, 'guests'));
+    const rows = [...map.values()].sort((a, b) => b.month.localeCompare(a.month))
+      .map((r) => ({ ...r, label: monthLabel(r.month), current: r.month === today().slice(0, 7), lastExport: lastExportOf(r.month) }));
+    const all = db.exports.filter((x) => x.month === 'all').map((x) => x.at).sort().pop() || null;
+    return { rows, total: { meals: rows.reduce((n, r) => n + r.meals, 0), guests: rows.reduce((n, r) => n + r.guests, 0), lastExport: all } };
+  }
+  /** Fällig: ab dem eingestellten Tag, wenn der Vormonat Buchungen hat und noch nicht exportiert ist. */
   function exportStatus() {
     const t = today();
     const day = String(Math.min(Number(db.settings.send_day) || 1, 28)).padStart(2, '0');
     const thisMonth = `${t.slice(0, 8)}${day}`;
-    const target = addDays(thisMonth, -1); // so weit muss exportiert sein
-    const last = db.settings.last_export_to || '';
-    const open = (x) => !x.cancelled_at && x.date > last && x.date <= target;
-    const hasData = db.bookings.some(open) || db.guests.some(open);
-    const done = last && last >= target;
-    const due = hasData && t >= thisMonth && !done;
-    const next = due ? thisMonth : (t < thisMonth ? thisMonth : `${addMonths(`${t.slice(0, 8)}01`, 1).slice(0, 8)}${day}`);
-    return { due, next };
+    const prev = addMonths(`${t.slice(0, 8)}01`, -1).slice(0, 7);
+    const hasData = db.bookings.some((b) => active(b) && b.date.startsWith(prev)) || db.guests.some((g) => active(g) && g.date.startsWith(prev));
+    const due = hasData && t >= thisMonth && !lastExportOf(prev);
+    const next = due || t < thisMonth ? thisMonth : `${addMonths(`${t.slice(0, 8)}01`, 1).slice(0, 8)}${day}`;
+    return { due, next, month: prev, label: monthLabel(prev) };
   }
 
   // ---------- Import ----------
@@ -533,14 +543,14 @@
     const me = ADMIN_USER;
 
     if (path === 'admin/status') {
-      const { from } = pendingPeriod();
+      const from = monthStart();
       const t = today();
       const inRange = (x) => !x.cancelled_at && x.date >= from && x.date <= t;
       const ex = exportStatus();
       return json({
         ok: true, periodFrom: from, meals: db.bookings.filter(inRange).length, guests: db.guests.filter(inRange).length,
         sync: { at: db.settings.last_import_at, status: 'ok', error: '' },
-        lastExport: db.exports[db.exports.length - 1] || null, nextSend: ex.next, exportDue: ex.due, mock: false,
+        lastExport: db.exports[db.exports.length - 1] || null, nextSend: ex.next, exportDue: ex.due, dueLabel: ex.label, mock: false,
         employees: db.employees.filter((e) => e.is_active && e.pin_hash).length, importFile: db.settings.last_import_file,
         persisted: await persistPromise,
       });
@@ -554,7 +564,7 @@
       return json({ ok: true, rows });
     }
     if (path === 'admin/bookings' && method === 'GET') {
-      const from = isIso(query.get('from')) ? query.get('from') : pendingPeriod().from;
+      const from = isIso(query.get('from')) ? query.get('from') : monthStart();
       const to = isIso(query.get('to')) ? query.get('to') : today();
       const type = query.get('type') || 'all';
       const company = query.get('company') || '';
@@ -601,7 +611,7 @@
       return json({ ok: true });
     }
     if (path === 'admin/export.xlsx') {
-      const from = isIso(query.get('from')) ? query.get('from') : pendingPeriod().from;
+      const from = isIso(query.get('from')) ? query.get('from') : monthStart();
       const to = isIso(query.get('to')) ? query.get('to') : today();
       const { buffer, filename } = await buildWorkbook(from, to);
       audit(me.email, 'export_downloaded', { from, to }); await save();
@@ -645,23 +655,31 @@
   // ---------- Direkte Funktionen für die Verwaltung (Dateien) ----------
   const guard = async () => { await load(); if (!session.valid()) throw new Error('Bitte erneut anmelden.'); session.touch(); };
   window.kantineLocal = {
-    pendingPeriod: () => serial(async () => { await guard(); return pendingPeriod(); }),
+    months: () => serial(async () => { await guard(); return monthList(); }),
     previewImport: (file) => serial(async () => { await guard(); return importEmployees(file, false); }),
     applyImport: (file) => serial(async () => { await guard(); return importEmployees(file, true); }),
     template: () => serial(async () => { await guard(); return templateFile(); }),
-    /** Erstellt die Abrechnung seit dem letzten Export bis gestern. */
-    buildExport: () => serial(async () => {
+    /** Erstellt das Excel für einen Monat ('YYYY-MM') oder für alle gespeicherten Daten ('all'). */
+    buildExport: (key) => serial(async () => {
       await guard();
-      const { from, to } = pendingPeriod();
-      if (from > to) return { empty: true, message: 'Seit dem letzten Export gibt es keinen neuen abgeschlossenen Tag.' };
-      const { buffer, filename, counts } = await buildWorkbook(from, to);
-      return { from, to, counts, file: new File([buffer], filename, { type: XLSX_TYPE }) };
+      let from; let to; let name;
+      if (key === 'all') {
+        from = [...db.bookings, ...db.guests].filter(active).map((x) => x.date).sort()[0];
+        to = today();
+        if (!from) return { empty: true, message: 'Es sind keine Buchungen gespeichert.' };
+        name = `Kantine_alle_Daten_bis_${to}.xlsx`;
+      } else {
+        if (!/^\d{4}-\d{2}$/.test(String(key))) throw new Error('Ungültiger Monat.');
+        ({ from, to } = monthRange(key));
+        name = `Kantine_${key}${key === today().slice(0, 7) ? `_Stand_${to}` : ''}.xlsx`;
+      }
+      const { buffer, counts } = await buildWorkbook(from, to);
+      return { key, from, to, counts, file: new File([buffer], name, { type: XLSX_TYPE }) };
     }),
-    markExported: (from, to, counts, how) => serial(async () => {
+    markExported: (key, from, to, counts, how) => serial(async () => {
       await guard();
-      db.exports.push({ id: (db.exports[db.exports.length - 1]?.id || 0) + 1, at: nowTs(), period_from: from, period_to: to, recipients: how, status: 'sent', error: null, trigger: 'manual' });
-      if (!db.settings.last_export_to || to > db.settings.last_export_to) db.settings.last_export_to = to;
-      audit('Admin', 'export_sent', { from, to, ...counts, how });
+      db.exports.push({ id: (db.exports[db.exports.length - 1]?.id || 0) + 1, at: nowTs(), month: key, period_from: from, period_to: to, recipients: how, status: 'sent', error: null, trigger: 'manual' });
+      audit('Admin', 'export_sent', { zeitraum: key === 'all' ? 'alle Daten' : monthLabel(key), from, to, ...counts, how });
       await save();
     }),
     backup: () => serial(async () => {

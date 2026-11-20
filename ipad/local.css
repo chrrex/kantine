@@ -23,3 +23,12 @@
 .emp-table { max-height: 320px; overflow: auto; }
 .emp-table table { font-size: 14px; }
 .back-link { font-weight: 600; }
+.month-table th.num, .month-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.month-table td.action, .month-table th:last-child { text-align: right; white-space: nowrap; }
+.month-table tfoot th, .month-table tfoot td { border-top: 2px solid #D8D8CC; font-weight: 700; }
+.month-table .never { color: #A23B2A; font-weight: 600; }
+.month-table .current { color: #6B6B5E; font-weight: 400; font-size: 14px; }
+.local-due { margin: 0; }
+.month-table td, .month-table tfoot th { vertical-align: middle; }
+.month-table tbody td { padding-top: 10px; padding-bottom: 10px; }
+.month-table tfoot th { font-size: inherit; color: inherit; text-transform: none; letter-spacing: 0; }

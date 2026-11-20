@@ -1,7 +1,7 @@
 'use strict';
 /* Service Worker der iPad-Version: hält alle Dateien der App auf dem Gerät,
    damit die Kantine auch ohne WLAN startet. Daten liegen nicht hier, sondern in IndexedDB. */
-const VERSION = 'mwoomcvk';
+const VERSION = 'mwoqx8fb';
 const FILES = ["./","./kiosk/","./admin/","./admin/admin.css","./admin/admin.js","./admin/index.html","./index.html","./ipad/Beispiel_Mitarbeiterliste.csv","./ipad/apple-touch-icon.png","./ipad/exceljs.min.js","./ipad/icon-512.png","./ipad/local-admin.js","./ipad/local-api.js","./ipad/local-kiosk.js","./ipad/local.css","./kiosk/index.html","./kiosk/kiosk.css","./kiosk/kiosk.js","./kiosk/manifest.webmanifest","./shared/datenschutz.css","./shared/datenschutz.html","./shared/datenschutz.js","./shared/fonts/source-sans-3-latin-300-normal.woff2","./shared/fonts/source-sans-3-latin-400-normal.woff2","./shared/fonts/source-sans-3-latin-600-normal.woff2","./shared/fonts/source-sans-3-latin-700-normal.woff2","./shared/fonts.css","./shared/privacy-default.txt","./shared/privacy-render.js","./shared/sgl-logo.svg"];
 const CACHE = `kantine-ipad-${VERSION}`;
 

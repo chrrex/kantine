@@ -7,6 +7,7 @@
   document.documentElement.classList.add('local');
   const $ = (id) => document.getElementById(id);
   const L = () => window.kantineLocal;
+  const monthName = (m) => `${['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'][Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`;
   const de = (iso) => (iso ? iso.split('-').reverse().join('.') : '');
   const dateTimeDe = (ts) => {
     if (!ts) return '';
@@ -22,13 +23,14 @@
   const api = async (path, body) => (await fetch(`../api/${path}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {})).json();
 
   /** Teilen-Menü (iPad) oder Download. Muss direkt aus einem Tipp aufgerufen werden. */
-  async function shareOrDownload(file, forceDownload = false) {
+  async function shareOrDownload(file, forceDownload = false, throwIfNotAllowed = false) {
     if (!forceDownload && navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file], title: file.name });
         return 'geteilt';
       } catch (err) {
         if (err && err.name === 'AbortError') return null;
+        if (err && err.name === 'NotAllowedError' && throwIfNotAllowed) throw err;
       }
     }
     const url = URL.createObjectURL(file);
@@ -91,9 +93,9 @@
     // Statuskarten umbenennen
     const labels = document.querySelectorAll('.cards .stat-label');
     if (labels.length === 4) {
-      labels[0].textContent = 'Essen seit letzter Abrechnung';
+      labels[0].textContent = 'Essen diesen Monat';
       labels[1].textContent = 'Mitarbeiterliste';
-      labels[2].textContent = 'Letzte Abrechnung';
+      labels[2].textContent = 'Letzter Export';
       labels[3].textContent = 'Abrechnung fällig ab';
     }
     let status = null;
@@ -102,12 +104,12 @@
     function applyStatus() {
       if (!status) return;
       setText('st-sync', status.employees ? `${status.employees} mit PIN · ${dateTimeDe(status.sync.at)}` : 'noch nicht importiert');
-      setText('st-export', status.lastExport ? `bis ${de(status.lastExport.period_to)} · ${dateTimeDe(status.lastExport.at)}` : 'noch keine');
+      if (status.nextSend) setText('st-next', de(status.nextSend));
+      setText('st-export', status.lastExport ? `${status.lastExport.month === 'all' ? 'Alle Daten' : (status.lastExport.month ? monthName(status.lastExport.month) : `bis ${de(status.lastExport.period_to)}`)} · ${dateTimeDe(status.lastExport.at)}` : 'noch keiner');
     }
-    for (const id of ['st-sync', 'st-export']) new MutationObserver(applyStatus).observe($(id), { childList: true, characterData: true, subtree: true });
+    for (const id of ['st-sync', 'st-export', 'st-next']) new MutationObserver(applyStatus).observe($(id), { childList: true, characterData: true, subtree: true });
 
     // ---------- Monatsabrechnung ----------
-    let built = null;
     async function refresh() {
       if ($('view-app').hidden) return;
       const s = await api('admin/status');
@@ -115,8 +117,8 @@
       status = s;
       applyStatus();
       $('lx-due').hidden = !s.exportDue;
-      const p = await L().pendingPeriod().catch(() => null);
-      if (p) $('lx-period').textContent = p.from > p.to ? 'Alles bis gestern ist abgerechnet.' : `Nächste Abrechnung: ${de(p.from)} bis ${de(p.to)} (bis gestern)`;
+      $('lx-due').textContent = `Die Abrechnung für ${s.dueLabel} ist fällig. Bitte unten exportieren und ablegen oder verschicken.`;
+      renderMonths();
       $('li-status').textContent = s.employees ? `${s.employees} Mitarbeitende mit PIN · zuletzt importiert ${dateTimeDe(s.sync.at)}${s.importFile ? ` aus „${s.importFile}“` : ''}` : 'Noch keine Mitarbeiterliste importiert.';
       $('lb-persist').textContent = s.persisted
         ? 'Der Speicher ist dauerhaft geschützt.'
@@ -124,40 +126,73 @@
     }
     new MutationObserver(refresh).observe($('view-app'), { attributes: true, attributeFilter: ['hidden'] });
     window.addEventListener('hashchange', refresh);
+    document.addEventListener('kantine-refresh', refresh);
 
-    const resetExport = () => { built = null; $('lx-share').hidden = true; $('lx-download').hidden = true; $('lx-mark').hidden = true; };
-    $('lx-build').addEventListener('click', async () => {
-      resetExport();
-      $('lx-result').textContent = 'Erstelle Excel …';
+    const lastCell = (ts) => (ts ? dateTimeDe(ts) : h('span', { class: 'never' }, 'noch nie'));
+    async function renderMonths() {
+      const m = await L().months().catch(() => null);
+      if (!m) return;
+      $('lx-rows').replaceChildren(...m.rows.map((r) => h('tr', {},
+        h('td', { class: 'nowrap' }, r.label, r.current ? h('span', { class: 'current' }, ' (läuft noch)') : null),
+        h('td', { class: 'num' }, String(r.meals)),
+        h('td', { class: 'num' }, String(r.guests)),
+        h('td', { class: 'nowrap' }, r.current && !r.lastExport ? '–' : lastCell(r.lastExport)),
+        h('td', { class: 'action' }, exportButton(r.month, r.label)))));
+      $('lx-all-meals').textContent = String(m.total.meals);
+      $('lx-all-guests').textContent = String(m.total.guests);
+      $('lx-all-last').replaceChildren(m.total.lastExport ? dateTimeDe(m.total.lastExport) : '–');
+      $('lx-empty').hidden = m.rows.length > 0;
+      $('lx-all').disabled = m.rows.length === 0;
+    }
+
+    /** Excel erstellen und sofort teilen. Lässt Safari das Teilen nach dem Erstellen nicht zu,
+        wird der Button zu „Jetzt teilen“ und ein zweiter Tipp öffnet das Teilen-Menü. */
+    async function runExport(btn, key, label) {
+      const original = btn.dataset.label || btn.textContent;
+      btn.dataset.label = original;
+      if (btn._built) {
+        const built = btn._built;
+        const how = await shareOrDownload(built.file);
+        if (how) await done(btn, built, label, how);
+        return;
+      }
+      btn.disabled = true; btn.textContent = 'Erstelle …';
+      $('lx-result').textContent = '';
       try {
-        const r = await L().buildExport();
-        if (r.empty) { $('lx-result').textContent = r.message; return; }
-        built = r;
-        $('lx-result').textContent = `${r.file.name} ist bereit: ${r.counts.bookings} Essen, ${r.counts.guests} Gästeessen. Jetzt teilen oder speichern.`;
-        $('lx-share').hidden = !(navigator.canShare && navigator.canShare({ files: [r.file] }));
-        $('lx-download').hidden = false;
-      } catch (err) { $('lx-result').textContent = `Fehler: ${err.message}`; }
-    });
-    async function finish(how) {
-      await L().markExported(built.from, built.to, built.counts, how);
-      $('lx-result').textContent = `Abgerechnet: ${de(built.from)} bis ${de(built.to)}. Danke!`;
-      resetExport();
-      refresh();
+        const built = await L().buildExport(key);
+        if (built.empty) { $('lx-result').textContent = built.message; return; }
+        let how;
+        try {
+          how = await shareOrDownload(built.file, false, true);
+        } catch (err) {
+          if (err && err.name === 'NotAllowedError') {
+            btn._built = built; btn.textContent = 'Jetzt teilen';
+            $('lx-result').textContent = `${built.file.name} ist fertig. Bitte noch einmal auf „Jetzt teilen“ tippen.`;
+            return;
+          }
+          throw err;
+        }
+        if (how) await done(btn, built, label, how);
+        else $('lx-result').textContent = 'Export abgebrochen.';
+      } catch (err) {
+        $('lx-result').textContent = `Fehler: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        if (!btn._built) btn.textContent = original;
+      }
+    }
+    async function done(btn, built, label, how) {
+      btn._built = null; btn.textContent = btn.dataset.label;
+      await L().markExported(built.key, built.from, built.to, built.counts, how);
+      $('lx-result').textContent = `${label}: ${built.counts.bookings} Essen und ${built.counts.guests} Gästeessen exportiert (${how}).`;
       document.dispatchEvent(new Event('kantine-refresh'));
     }
-    $('lx-share').addEventListener('click', async () => {
-      if (!built) return;
-      const how = await shareOrDownload(built.file);
-      if (how === 'geteilt') await finish('über Teilen-Menü');
-      else if (how) { $('lx-mark').hidden = false; $('lx-result').textContent = 'Datei heruntergeladen. Wenn sie abgelegt bzw. verschickt ist: „Als abgerechnet markieren“.'; }
-    });
-    $('lx-download').addEventListener('click', async () => {
-      if (!built) return;
-      await shareOrDownload(built.file, true);
-      $('lx-mark').hidden = false;
-      $('lx-result').textContent = 'Datei heruntergeladen. Wenn sie abgelegt bzw. verschickt ist: „Als abgerechnet markieren“.';
-    });
-    $('lx-mark').addEventListener('click', () => built && finish('heruntergeladen'));
+    function exportButton(key, label) {
+      const b = h('button', { class: 'btn', type: 'button' }, 'Exportieren');
+      b.addEventListener('click', () => runExport(b, key, label));
+      return b;
+    }
+    $('lx-all').addEventListener('click', () => runExport($('lx-all'), 'all', 'Alle Daten'));
 
     // ---------- Mitarbeiterliste ----------
     let pendingFile = null;
@@ -193,7 +228,7 @@
         const r = await L().applyImport(pendingFile);
         report(r);
         $('li-result').textContent = r.applied ? 'Mitarbeiterliste übernommen.' : 'Nicht übernommen.';
-        if (r.applied) { pendingFile = null; $('li-apply').hidden = true; $('li-discard').hidden = true; refresh(); loadEmployees(); document.dispatchEvent(new Event('kantine-refresh')); }
+        if (r.applied) { pendingFile = null; $('li-apply').hidden = true; $('li-discard').hidden = true; loadEmployees(); document.dispatchEvent(new Event('kantine-refresh')); }
       } catch (err) { $('li-result').textContent = `Fehler: ${err.message}`; }
     });
     $('li-template').addEventListener('click', async () => {
