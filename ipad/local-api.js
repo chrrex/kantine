@@ -763,6 +763,17 @@
       session.end();
       return { created: parsed.created, bookings: db.bookings.length };
     }),
+    /** Alle Buchungen, Gästeessen und Exporte löschen (z. B. nach dem Testbetrieb). Mitarbeitende, PINs und Einstellungen bleiben. */
+    resetBookings: (pin) => serial(async () => {
+      await guard();
+      if ((await pbkdf2(String(pin || ''), db.admin.salt)) !== db.admin.hash) throw new Error('Admin-PIN falsch.');
+      const counts = { essen: db.bookings.length, gaeste: db.guests.length, exporte: db.exports.length };
+      db.bookings = []; db.guests = []; db.exports = [];
+      db.employees = db.employees.filter((e) => !e.deleted);
+      audit('Admin', 'bookings_reset', counts);
+      await save();
+      return counts;
+    }),
     changePin: (current, next) => serial(async () => {
       await guard();
       if ((await pbkdf2(String(current || ''), db.admin.salt)) !== db.admin.hash) throw new Error('Aktuelle Admin-PIN falsch.');

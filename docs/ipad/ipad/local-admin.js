@@ -347,6 +347,19 @@
       finally { $('lv-install').disabled = false; }
     });
 
+    // ---------- Buchungen löschen ----------
+    $('lr-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!$('lr-pin').value) { $('lr-result').textContent = 'Bitte zur Bestätigung die Admin-PIN eingeben.'; return; }
+      if (!confirm('Wirklich ALLE Buchungen, Gästeessen und Exporte löschen? Das lässt sich nur mit einer Sicherung rückgängig machen. Mitarbeitende bleiben erhalten.')) return;
+      try {
+        const c = await L().resetBookings($('lr-pin').value);
+        $('lr-result').textContent = `Gelöscht: ${c.essen} Essen, ${c.gaeste} Gästeessen, ${c.exporte} Exporte. Die Mitarbeitenden sind unverändert.`;
+        document.dispatchEvent(new Event('kantine-refresh'));
+      } catch (err) { $('lr-result').textContent = err.message; }
+      finally { $('lr-pin').value = ''; }
+    });
+
     // ---------- Admin-PIN ändern ----------
     $('lp-form').addEventListener('submit', async (e) => {
       e.preventDefault();

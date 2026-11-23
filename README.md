@@ -100,6 +100,7 @@ Variante für den Betrieb nur auf einem iPad, ohne Server und ohne Schnittstelle
 - **Daten auf dem Gerät:** Buchungen liegen in der Browser-Datenbank (IndexedDB) des iPads. Läuft komplett ohne WLAN.
 - **Monatsabrechnung per Knopfdruck:** In der Verwaltung zeigt eine Tabelle alle Monate mit Buchungen (Anzahl Essen, Gästeessen, letzter Export). Je Monat ein Button „Exportieren“, dazu „Alle Daten exportieren“. Der Export öffnet das Teilen-Menü („In Dateien sichern“ in den Netzwerkordner oder „Mail“). Ab dem eingestellten Tag erinnert ein Hinweis am Tablet und in der Verwaltung, bis der Vormonat exportiert ist.
 - **Verwaltung am iPad:** Logo am Tablet 3 Sekunden gedrückt halten. Zugang mit Admin-PIN (6–12 Ziffern) statt E-Mail und Passwort; beim ersten Öffnen wird sie festgelegt, dazu gibt es einen Wiederherstellungscode. Abmeldung nach 30 Minuten.
+- **Buchungen löschen:** Settings → „Buchungen löschen“ (mit Admin-PIN) entfernt alle Essen, Gästeessen und Exporte, z. B. Testdaten vor dem Start. Mitarbeitende, PINs und Einstellungen bleiben.
 - **Datensicherung:** Sicherung als Datei erstellen und im Netzwerkordner ablegen, bei Bedarf wieder einspielen.
 - **Nicht enthalten:** Gastromatic-Abgleich, Stempelprüfung, automatischer Mailversand, mehrere Benutzer, Offline-Nachprüfung.
 

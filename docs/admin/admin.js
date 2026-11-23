@@ -450,7 +450,7 @@
     // iPad-Version
     employees_imported: 'Mitarbeiterliste importiert', admin_pin_set: 'Admin-PIN festgelegt', admin_pin_changed: 'Admin-PIN geändert',
     admin_pin_recovered: 'Admin-PIN neu festgelegt (Wiederherstellungscode)', backup_created: 'Sicherung erstellt',
-    backup_restored: 'Sicherung eingespielt', employee_added: 'Person hinzugefügt', employee_deleted: 'Person gelöscht', cleanup: 'Alte Daten gelöscht (Löschfrist)',
+    backup_restored: 'Sicherung eingespielt', employee_added: 'Person hinzugefügt', bookings_reset: 'Alle Buchungen gelöscht', employee_deleted: 'Person gelöscht', cleanup: 'Alte Daten gelöscht (Löschfrist)',
   };
   async function loadAudit() {
     const r = await api('/api/admin/audit');

@@ -119,7 +119,7 @@
 
   // Offline-Fähigkeit: alle Dateien der App im Gerät zwischenspeichern
   // Updates nur auf Knopfdruck (siehe sw.js). Ändert sich ausnahmsweise sw.js selbst, meldet „kantine-update-ready“ den Neustart.
-  const APP_VERSION = '20.11.2026, 10:24 (mworw9rr)';
+  const APP_VERSION = '23.11.2026, 08:15 (mwsxlj5p)';
     if ('serviceWorker' in navigator && window.isSecureContext) {
     let hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -762,6 +762,17 @@
       await save();
       session.end();
       return { created: parsed.created, bookings: db.bookings.length };
+    }),
+    /** Alle Buchungen, Gästeessen und Exporte löschen (z. B. nach dem Testbetrieb). Mitarbeitende, PINs und Einstellungen bleiben. */
+    resetBookings: (pin) => serial(async () => {
+      await guard();
+      if ((await pbkdf2(String(pin || ''), db.admin.salt)) !== db.admin.hash) throw new Error('Admin-PIN falsch.');
+      const counts = { essen: db.bookings.length, gaeste: db.guests.length, exporte: db.exports.length };
+      db.bookings = []; db.guests = []; db.exports = [];
+      db.employees = db.employees.filter((e) => !e.deleted);
+      audit('Admin', 'bookings_reset', counts);
+      await save();
+      return counts;
     }),
     changePin: (current, next) => serial(async () => {
       await guard();
