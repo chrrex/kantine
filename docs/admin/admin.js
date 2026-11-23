@@ -144,15 +144,22 @@
     )));
   }
 
+  function kindLabel(r, sep) {
+    if (r.kind === 'meal') return 'Essen';
+    if (r.kind === 'group') return `Gruppe${sep}${r.group_name} (${r.count} Essen)`;
+    return `Gast${sep}${r.guest_name}`;
+  }
+
   function bookingRow(r) {
     const notes = [];
     if (r.kind === 'meal' && !r.punch_checked) notes.push(h('span', { class: 'tag warn' }, 'Stempelung nicht geprüft'));
     if (r.source === 'admin') notes.push(h('span', { class: 'tag green' }, `Nachgetragen · ${r.comment || ''}`));
     if (r.source === 'offline') notes.push(h('span', { class: 'tag warn' }, 'Offline erfasst'));
     if (r.kind === 'guest') notes.push(h('span', { class: 'small' }, `${r.paying_company} · ${r.reason}`));
+    if (r.kind === 'group') notes.push(h('span', { class: 'small' }, `${r.paying_company}${r.note ? ` · ${r.note}` : ''}`));
     if (r.cancelled_at) notes.push(h('span', { class: 'tag grey' }, `Storniert · ${r.cancel_comment || ''}`));
 
-    const what = r.kind === 'meal' ? 'Essen' : `Gast · ${r.guest_name}`;
+    const what = kindLabel(r, ' · ');
     const action = r.cancelled_at
       ? h('span', { class: 'small muted' }, r.cancelled_by || '')
       : h('button', { class: 'link', type: 'button', onclick: () => openCancel(r) }, 'Stornieren');
@@ -194,14 +201,14 @@
   let cancelTarget = null;
   function openCancel(r) {
     cancelTarget = r;
-    $('cancel-what').textContent = `${de(r.date)} ${r.time} · ${r.first_name} ${r.last_name} · ${r.kind === 'meal' ? 'Essen' : `Gast ${r.guest_name}`}`;
+    $('cancel-what').textContent = `${de(r.date)} ${r.time} · ${r.first_name} ${r.last_name} · ${kindLabel(r, ' ')}`;
     $('cancel-comment').value = '';
     $('cancel-error').hidden = true;
     $('dlg-cancel').showModal();
   }
   $('cancel-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const path = cancelTarget.kind === 'meal' ? 'bookings' : 'guests';
+    const path = { meal: 'bookings', guest: 'guests', group: 'groups' }[cancelTarget.kind];
     const r = await api(`/api/admin/${path}/${cancelTarget.id}/cancel`, { method: 'POST', body: { comment: $('cancel-comment').value } });
     if (!r.ok) { $('cancel-error').textContent = r.error; $('cancel-error').hidden = false; return; }
     $('dlg-cancel').close();
@@ -442,7 +449,7 @@
   // ---------- Protokoll ----------
   const ACTIONS = {
     login: 'Anmeldung', booking_added: 'Buchung nachgetragen', booking_cancelled: 'Buchung storniert',
-    guest_cancelled: 'Gast storniert', settings_changed: 'Settings geändert', export_sent: 'Excel versendet',
+    guest_cancelled: 'Gast storniert', group_cancelled: 'Gruppe storniert', settings_changed: 'Settings geändert', export_sent: 'Excel versendet',
     export_failed: 'Excel-Versand fehlgeschlagen', export_downloaded: 'Excel heruntergeladen',
     gastromatic_sync: 'Mitarbeiter abgeglichen', user_created: 'Benutzer angelegt', user_deleted: 'Benutzer entfernt',
     password_changed: 'Passwort geändert',

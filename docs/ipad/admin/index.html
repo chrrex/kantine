@@ -63,14 +63,14 @@
       <div class="banner local-due" id="lx-due" hidden></div>
       <div class="table-wrap">
         <table class="month-table">
-          <thead><tr><th>Monat</th><th class="num">Essen</th><th class="num">Gästeessen</th><th>Letzter Export</th><th><span class="sr-only">Aktion</span></th></tr></thead>
+          <thead><tr><th>Monat</th><th class="num">Essen</th><th class="num">Gästeessen</th><th class="num">Gruppenessen</th><th>Letzter Export</th><th><span class="sr-only">Aktion</span></th></tr></thead>
           <tbody id="lx-rows"></tbody>
-          <tfoot><tr><th>Alle Daten</th><th class="num" id="lx-all-meals">0</th><th class="num" id="lx-all-guests">0</th><td id="lx-all-last">–</td><td class="action"><button class="btn primary" type="button" id="lx-all">Alle Daten exportieren</button></td></tr></tfoot>
+          <tfoot><tr><th>Alle Daten</th><th class="num" id="lx-all-meals">0</th><th class="num" id="lx-all-guests">0</th><th class="num" id="lx-all-groups">0</th><td id="lx-all-last">–</td><td class="action"><button class="btn primary" type="button" id="lx-all">Alle Daten exportieren</button></td></tr></tfoot>
         </table>
       </div>
       <p class="empty muted" id="lx-empty" hidden>Noch keine Buchungen vorhanden.</p>
       <p class="small" id="lx-result" role="status"></p>
-      <p class="small muted">„Exportieren“ erstellt das Excel und öffnet das Teilen-Menü: „In Dateien sichern“ legt es im Netzwerkordner ab, „Mail“ schickt es an HR. Der laufende Monat enthält die Buchungen bis heute. Stornierte Buchungen werden nicht mitgezählt.</p>
+      <p class="small muted">„Exportieren“ erstellt das Excel und öffnet das Teilen-Menü: „In Dateien sichern“ legt es im Netzwerkordner ab, „Mail“ schickt es an HR. Der laufende Monat enthält die Buchungen bis heute. Stornierte Buchungen werden nicht mitgezählt. Gruppenessen stehen im Excel auf dem Blatt „Gruppen“.</p>
     </section>
     <section class="cards" aria-label="Status">
       <div class="card stat"><span class="stat-label">Essen seit letztem Versand</span><span class="stat-value" id="st-meals">–</span><span class="small muted" id="st-guests"></span></div>
@@ -170,7 +170,7 @@
 
       <section class="card stack local-card">
         <h2>Buchungen löschen</h2>
-        <p class="small muted">Löscht alle gebuchten Essen, Gästeessen und Exporte – zum Beispiel die Testdaten vor dem echten Start. <strong>Mitarbeitende, PINs, Einstellungen und die Admin-PIN bleiben erhalten.</strong> Tipp: vorher eine Sicherung erstellen.</p>
+        <p class="small muted">Löscht alle gebuchten Essen, Gästeessen, Gruppen und Exporte – zum Beispiel die Testdaten vor dem echten Start. <strong>Mitarbeitende, PINs, Einstellungen und die Admin-PIN bleiben erhalten.</strong> Tipp: vorher eine Sicherung erstellen.</p>
         <form id="lr-form" class="stack">
           <input id="lr-pin" type="password" inputmode="numeric" autocomplete="off" placeholder="Admin-PIN zur Bestätigung" aria-label="Admin-PIN zur Bestätigung">
           <button class="btn danger" type="submit">Alle Buchungen löschen</button>

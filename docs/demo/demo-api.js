@@ -286,7 +286,7 @@
     // Datenschutzhinweise
     if (path === 'privacy') {
       if (db.settings.privacy_text) return json({ ok: true, text: db.settings.privacy_text, custom: true });
-      const res = await realFetch(`${scriptBase}../shared/privacy-default.txt?v=mwsxlznu`);
+      const res = await realFetch(`${scriptBase}../shared/privacy-default.txt?v=mwtc2ffp`);
       return json({ ok: true, text: await res.text(), custom: false });
     }
 

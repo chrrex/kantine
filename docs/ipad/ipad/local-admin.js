@@ -86,6 +86,9 @@
       location.reload();
     });
 
+    // Filter „Art“: Gruppen ergänzen
+    $('f-type').append(h('option', { value: 'group' }, 'Gruppen'));
+
     // Navigation: zurück zum Tablet
     const navSpacer = document.querySelector('.nav .spacer');
     navSpacer.after(h('a', { class: 'small back-link', href: '../kiosk/' }, 'Zur Kantine'));
@@ -105,9 +108,10 @@
       if (!status) return;
       setText('st-sync', status.employees ? `${status.employees} mit PIN · ${dateTimeDe(status.sync.at)}` : 'noch nicht importiert');
       if (status.nextSend) setText('st-next', de(status.nextSend));
+      setText('st-guests', `seit ${de(status.periodFrom)} · ${status.guests} Gästeessen · ${status.groupMeals || 0} Gruppenessen`);
       setText('st-export', status.lastExport ? `${status.lastExport.month === 'all' ? 'Alle Daten' : (status.lastExport.month ? monthName(status.lastExport.month) : `bis ${de(status.lastExport.period_to)}`)} · ${dateTimeDe(status.lastExport.at)}` : 'noch keiner');
     }
-    for (const id of ['st-sync', 'st-export', 'st-next']) new MutationObserver(applyStatus).observe($(id), { childList: true, characterData: true, subtree: true });
+    for (const id of ['st-sync', 'st-export', 'st-next', 'st-guests']) new MutationObserver(applyStatus).observe($(id), { childList: true, characterData: true, subtree: true });
 
     // ---------- Monatsabrechnung ----------
     async function refresh() {
@@ -136,10 +140,12 @@
         h('td', { class: 'nowrap' }, r.label, r.current ? h('span', { class: 'current' }, ' (läuft noch)') : null),
         h('td', { class: 'num' }, String(r.meals)),
         h('td', { class: 'num' }, String(r.guests)),
+        h('td', { class: 'num' }, String(r.groups)),
         h('td', { class: 'nowrap' }, r.current && !r.lastExport ? '–' : lastCell(r.lastExport)),
         h('td', { class: 'action' }, exportButton(r.month, r.label)))));
       $('lx-all-meals').textContent = String(m.total.meals);
       $('lx-all-guests').textContent = String(m.total.guests);
+      $('lx-all-groups').textContent = String(m.total.groups);
       $('lx-all-last').replaceChildren(m.total.lastExport ? dateTimeDe(m.total.lastExport) : '–');
       $('lx-empty').hidden = m.rows.length > 0;
       $('lx-all').disabled = m.rows.length === 0;
@@ -184,7 +190,7 @@
     async function done(btn, built, label, how) {
       btn._built = null; btn.textContent = btn.dataset.label;
       await L().markExported(built.key, built.from, built.to, built.counts, how);
-      $('lx-result').textContent = `${label}: ${built.counts.bookings} Essen und ${built.counts.guests} Gästeessen exportiert (${how}).`;
+      $('lx-result').textContent = `${label}: ${built.counts.bookings} Essen, ${built.counts.guests} Gästeessen und ${built.counts.groupMeals} Gruppenessen exportiert (${how}).`;
       document.dispatchEvent(new Event('kantine-refresh'));
     }
     function exportButton(key, label) {
@@ -193,6 +199,9 @@
       return b;
     }
     $('lx-all').addEventListener('click', () => runExport($('lx-all'), 'all', 'Alle Daten'));
+    // Nach Storno oder Nachtrag lädt admin.js die Liste neu – dann auch die Monatstabelle aktualisieren
+    let monthsTimer;
+    new MutationObserver(() => { clearTimeout(monthsTimer); monthsTimer = setTimeout(renderMonths, 150); }).observe($('rows'), { childList: true });
 
     // ---------- Mitarbeiterliste ----------
     let pendingFile = null;
@@ -354,7 +363,7 @@
       if (!confirm('Wirklich ALLE Buchungen, Gästeessen und Exporte löschen? Das lässt sich nur mit einer Sicherung rückgängig machen. Mitarbeitende bleiben erhalten.')) return;
       try {
         const c = await L().resetBookings($('lr-pin').value);
-        $('lr-result').textContent = `Gelöscht: ${c.essen} Essen, ${c.gaeste} Gästeessen, ${c.exporte} Exporte. Die Mitarbeitenden sind unverändert.`;
+        $('lr-result').textContent = `Gelöscht: ${c.essen} Essen, ${c.gaeste} Gästeessen, ${c.gruppen} Gruppen, ${c.exporte} Exporte. Die Mitarbeitenden sind unverändert.`;
         document.dispatchEvent(new Event('kantine-refresh'));
       } catch (err) { $('lr-result').textContent = err.message; }
       finally { $('lr-pin').value = ''; }

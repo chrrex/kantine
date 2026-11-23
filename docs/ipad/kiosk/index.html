@@ -22,7 +22,7 @@
   <section class="screen" id="screen-pin" data-active>
     <header class="topbar">
       <img class="logo" src="../shared/sgl-logo.svg" alt="Schloss &amp; Gut Liebenberg" data-mode="meal">
-      <button class="back" type="button" data-action="cancel" data-mode="guest">
+      <button class="back" type="button" data-action="cancel" data-mode="guest group">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Abbrechen
       </button>
       <div class="topbar-right">
@@ -44,14 +44,23 @@
       <div class="pin-intro">
         <div class="guest-icon" data-mode="guest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M19 8v6M16 11h6"/></svg></div>
         <h1 data-mode="meal">Mittagessen<br>buchen</h1>
+        <div class="guest-icon" data-mode="group"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3.5"/><circle cx="17" cy="8" r="2.8"/><path d="M2 20v-1a5.5 5.5 0 0 1 5.5-5.5h3A5.5 5.5 0 0 1 16 19v1"/><path d="M16 13.6h1.5A4.5 4.5 0 0 1 22 18v1"/></svg></div>
         <h1 data-mode="guest">Gäste einladen</h1>
+        <h1 data-mode="group">Gruppe anmelden</h1>
         <p class="lead" data-mode="meal">Gib deinen Terminal-Pin ein</p>
         <p class="lead" data-mode="guest">Gib zuerst deinen Terminal-Pin ein.<br>Du wirst als einladende Person eingetragen.</p>
+        <p class="lead" data-mode="group">Gib zuerst deinen Terminal-Pin ein.<br>Du wirst als anmeldende Person eingetragen.</p>
         <div class="dots" id="dots" role="status" aria-live="polite"></div>
-        <button class="guest-button" type="button" data-action="guest" data-mode="meal">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M19 8v6M16 11h6"/></svg>
-          Gäste einladen
-        </button>
+        <div class="mode-buttons" data-mode="meal">
+          <button class="guest-button" type="button" data-action="guest">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M19 8v6M16 11h6"/></svg>
+            Gäste einladen
+          </button>
+          <button class="guest-button" type="button" data-action="group" id="group-button" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3.5"/><circle cx="17" cy="8" r="2.8"/><path d="M2 20v-1a5.5 5.5 0 0 1 5.5-5.5h3A5.5 5.5 0 0 1 16 19v1"/><path d="M16 13.6h1.5A4.5 4.5 0 0 1 22 18v1"/></svg>
+            Gruppe anmelden
+          </button>
+        </div>
       </div>
       <div class="keypad" aria-label="Ziffernfeld">
         <button type="button" data-digit="1">1</button><button type="button" data-digit="2">2</button><button type="button" data-digit="3">3</button>
@@ -131,6 +140,49 @@
       <button type="button" class="secondary" data-action="cancel">Abbrechen</button>
       <button type="button" class="primary" id="guest-submit" data-action="submit-guests" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg><span id="guest-submit-label">Buchen</span>
+      </button>
+    </footer>
+  </section>
+
+  <!-- 6 · Gruppen-Formular -->
+  <section class="screen" id="screen-group">
+    <header class="topbar">
+      <h1 class="topbar-title">Gruppe anmelden</h1>
+      <div class="host">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 16 0v1"/></svg>
+        Angemeldet von <strong id="group-host-name"></strong>
+      </div>
+    </header>
+    <form class="guest-form group-form" id="group-form" novalidate>
+      <div class="col">
+        <fieldset>
+          <legend>Zahlende Firma</legend>
+          <div class="chips" id="group-company-chips"></div>
+        </fieldset>
+        <fieldset>
+          <legend><label for="group-name">Gruppenname</label></legend>
+          <input class="text-input" id="group-name" type="text" maxlength="120" autocomplete="off" placeholder="z. B. Tagung Müller AG">
+        </fieldset>
+      </div>
+      <div class="col">
+        <fieldset>
+          <legend><label for="group-count">Anzahl Essen</label></legend>
+          <div class="stepper">
+            <button type="button" data-action="group-minus" aria-label="Eins weniger">−</button>
+            <input id="group-count" type="number" inputmode="numeric" min="1" max="500" value="10">
+            <button type="button" data-action="group-plus" aria-label="Eins mehr">+</button>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend><label for="group-note">Bemerkung <span class="field-hint">(optional)</span></label></legend>
+          <textarea id="group-note" maxlength="500" placeholder="z. B. 2 vegetarisch, Kostenstelle, Ansprechpartner"></textarea>
+        </fieldset>
+      </div>
+    </form>
+    <footer class="bottombar">
+      <button type="button" class="secondary" data-action="cancel">Abbrechen</button>
+      <button type="button" class="primary" id="group-submit" data-action="submit-group" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg><span id="group-submit-label">Buchen</span>
       </button>
     </footer>
   </section>

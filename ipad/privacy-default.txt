@@ -12,7 +12,7 @@ Datenschutzbeauftragte/r: [Name, E-Mail]
 ## Wofür werden die Daten verarbeitet?
 
 - um zu erfassen, wer in der Kantine zu Mittag gegessen hat,
-- um Gästeessen der richtigen Firma zuzuordnen,
+- um Gäste- und Gruppenessen der richtigen Firma zuzuordnen,
 - damit HR und das Steuerbüro die Mitarbeiteressen lohnsteuerlich abrechnen können (Sachbezug).
 
 ## Welche Daten werden gespeichert?
@@ -20,6 +20,7 @@ Datenschutzbeauftragte/r: [Name, E-Mail]
 - Aus der Mitarbeiterliste, die HR einspielt: Name, Personalnummer, Gesellschaft, ob du buchen darfst und dein Terminal-Pin. Der Pin wird auf dem iPad nur verschlüsselt (als Hash) gespeichert, nie im Klartext.
 - Deine Buchungen: Datum und Uhrzeit des Essens.
 - Bei Gästen: Name des Gastes, zahlende Firma, Grund und wer eingeladen hat.
+- Bei Gruppen: Gruppenname, Anzahl der Essen, zahlende Firma, Bemerkung und wer die Gruppe angemeldet hat. Bitte in der Bemerkung keine Namen oder Gesundheitsangaben einzelner Gruppenmitglieder eintragen.
 
 Bankverbindung, Gehalt, Steuer- und Sozialversicherungsdaten, Adresse, Geburtsdatum oder Arbeitszeiten verarbeitet die App nicht. Es gibt keine Verbindung zu Gastromatic oder anderen Systemen.
 
@@ -35,7 +36,7 @@ Art. 6 Abs. 1 lit. b DSGVO (Durchführung des Arbeitsverhältnisses) und Art. 6 
 
 ## Wie lange werden die Daten gespeichert?
 
-Buchungen und Gästedaten werden nach 12 Monaten automatisch gelöscht. Für die an HR und das Steuerbüro übergebenen Abrechnungsunterlagen gelten die gesetzlichen Aufbewahrungsfristen.
+Buchungen, Gäste- und Gruppendaten werden nach 12 Monaten automatisch gelöscht. Für die an HR und das Steuerbüro übergebenen Abrechnungsunterlagen gelten die gesetzlichen Aufbewahrungsfristen.
 
 ## Am Tablet
 

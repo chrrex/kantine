@@ -53,7 +53,7 @@
     return {
       version: 1,
       salt: randomHex(16),
-      employees: [], companies: [], bookings: [], guests: [], nextId: 1, nextGuestId: 1,
+      employees: [], companies: [], bookings: [], guests: [], groups: [], nextId: 1, nextGuestId: 1, nextGroupId: 1,
       settings: {
         send_day: '1',
         paying_companies: ['Schloss & Gut Liebenberg', 'DKB STIFTUNG'],
@@ -109,7 +109,8 @@
     db = (await readState()) || emptyState();
     const base = emptyState();
     db.settings = { ...base.settings, ...db.settings };
-    for (const k of ['employees', 'companies', 'bookings', 'guests', 'exports', 'audit']) db[k] ||= [];
+    for (const k of ['employees', 'companies', 'bookings', 'guests', 'groups', 'exports', 'audit']) db[k] ||= [];
+    db.nextGroupId ||= 1;
     cleanupIfDue();
   }
   const save = () => writeState(db);
@@ -143,14 +144,15 @@
     if (db.settings.last_cleanup === t) return;
     const months = Math.max(1, Number(db.settings.retention_months) || 12);
     const cutoff = addMonths(t, -months);
-    const before = db.bookings.length + db.guests.length;
+    const before = db.bookings.length + db.guests.length + db.groups.length;
     db.bookings = db.bookings.filter((b) => b.date >= cutoff);
     db.guests = db.guests.filter((g) => g.date >= cutoff);
-    const used = new Set([...db.bookings.map((b) => b.employee_id), ...db.guests.map((g) => g.host_employee_id)]);
+    db.groups = db.groups.filter((g) => g.date >= cutoff);
+    const used = new Set([...db.bookings.map((b) => b.employee_id), ...db.guests.map((g) => g.host_employee_id), ...db.groups.map((g) => g.host_employee_id)]);
     db.employees = db.employees.filter((e) => e.is_active || used.has(e.id));
     db.audit = db.audit.filter((a) => a.at.slice(0, 10) >= cutoff);
     db.exports = db.exports.filter((x) => x.at.slice(0, 10) >= cutoff);
-    const removed = before - db.bookings.length - db.guests.length;
+    const removed = before - db.bookings.length - db.guests.length - db.groups.length;
     db.settings.last_cleanup = t;
     if (removed) audit('system', 'cleanup', { removed, before: cutoff });
     save();
@@ -192,6 +194,8 @@
     const ExcelJS = await excel();
     const rows = db.bookings.filter((b) => !b.cancelled_at && b.date >= from && b.date <= to).map((b) => ({ ...b, e: emp(b.employee_id) }));
     const guests = db.guests.filter((g) => !g.cancelled_at && g.date >= from && g.date <= to).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    const groups = db.groups.filter((g) => !g.cancelled_at && g.date >= from && g.date <= to).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    const groupMeals = groups.reduce((n, g) => n + g.count, 0);
     const wb = new ExcelJS.Workbook();
     wb.creator = 'Kantine Liebenberg';
     const byCompany = new Map();
@@ -209,8 +213,9 @@
     for (const [c, list] of sorted) ov.addRow([c, list.length]);
     ov.addRow(['Summe Mitarbeiteressen', rows.length]).font = { bold: true };
     ov.addRow(['Gästeessen', guests.length]).font = { bold: true };
+    ov.addRow([`Gruppenessen (${groups.length} ${groups.length === 1 ? 'Gruppe' : 'Gruppen'})`, groupMeals]).font = { bold: true };
 
-    const used = new Set(['Übersicht', 'Gäste']);
+    const used = new Set(['Übersicht', 'Gäste', 'Gruppen']);
     for (const [c, list] of sorted) {
       let name = c.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31);
       for (let i = 2; used.has(name); i++) name = `${name.slice(0, 28)} ${i}`;
@@ -231,7 +236,17 @@
     gs.columns = [{ header: 'Datum', width: 13 }, { header: 'Uhrzeit', width: 10 }, { header: 'Einladende Person', width: 26 }, { header: 'Personalnr.', width: 14 }, { header: 'Zahlende Firma', width: 30 }, { header: 'Gast', width: 26 }, { header: 'Grund', width: 36 }];
     header(gs.getRow(1));
     for (const g of guests) { const h = emp(g.host_employee_id); gs.addRow([formatDe(g.date), g.time, `${h.last_name}, ${h.first_name}`, h.staff_number, g.paying_company, g.guest_name, g.reason]); }
-    return { buffer: await wb.xlsx.writeBuffer(), filename: `Kantine_${from}_bis_${to}.xlsx`, counts: { bookings: rows.length, guests: guests.length } };
+    const grs = wb.addWorksheet('Gruppen');
+    grs.columns = [{ header: 'Datum', width: 13 }, { header: 'Uhrzeit', width: 10 }, { header: 'Gruppe', width: 30 }, { header: 'Anzahl Essen', width: 14 }, { header: 'Zahlende Firma', width: 30 }, { header: 'Bemerkung', width: 40 }, { header: 'Angemeldet von', width: 26 }, { header: 'Personalnr.', width: 14 }];
+    header(grs.getRow(1));
+    for (const g of groups) { const h = emp(g.host_employee_id); grs.addRow([formatDe(g.date), g.time, g.group_name, g.count, g.paying_company, g.note || '', `${h.last_name}, ${h.first_name}`, h.staff_number]); }
+    grs.addRow([]);
+    header(grs.addRow(['', '', 'Zahlende Firma', 'Anzahl Essen']));
+    const perFirm = new Map();
+    for (const g of groups) perFirm.set(g.paying_company, (perFirm.get(g.paying_company) || 0) + g.count);
+    for (const [firm, n] of [...perFirm.entries()].sort((a, b) => a[0].localeCompare(b[0], 'de'))) grs.addRow(['', '', firm, n]);
+    grs.addRow(['', '', 'Summe', groupMeals]).font = { bold: true };
+    return { buffer: await wb.xlsx.writeBuffer(), filename: `Kantine_${from}_bis_${to}.xlsx`, counts: { bookings: rows.length, guests: guests.length, groupMeals } };
   }
 
   const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
@@ -248,13 +263,14 @@
   /** Monate mit Buchungen, neuester zuerst. */
   function monthList() {
     const map = new Map();
-    const bump = (d, k) => { const m = d.slice(0, 7); const r = map.get(m) || { month: m, meals: 0, guests: 0 }; r[k]++; map.set(m, r); };
+    const bump = (d, k, n = 1) => { const m = d.slice(0, 7); const r = map.get(m) || { month: m, meals: 0, guests: 0, groups: 0 }; r[k] += n; map.set(m, r); };
     db.bookings.filter(active).forEach((b) => bump(b.date, 'meals'));
     db.guests.filter(active).forEach((g) => bump(g.date, 'guests'));
+    db.groups.filter(active).forEach((g) => bump(g.date, 'groups', g.count));
     const rows = [...map.values()].sort((a, b) => b.month.localeCompare(a.month))
       .map((r) => ({ ...r, label: monthLabel(r.month), current: r.month === today().slice(0, 7), lastExport: lastExportOf(r.month) }));
     const all = db.exports.filter((x) => x.month === 'all').map((x) => x.at).sort().pop() || null;
-    return { rows, total: { meals: rows.reduce((n, r) => n + r.meals, 0), guests: rows.reduce((n, r) => n + r.guests, 0), lastExport: all } };
+    return { rows, total: { meals: rows.reduce((n, r) => n + r.meals, 0), guests: rows.reduce((n, r) => n + r.guests, 0), groups: rows.reduce((n, r) => n + r.groups, 0), lastExport: all } };
   }
   /** Fällig: ab dem eingestellten Tag, wenn der Vormonat Buchungen hat und noch nicht exportiert ist. */
   function exportStatus() {
@@ -262,7 +278,7 @@
     const day = String(Math.min(Number(db.settings.send_day) || 1, 28)).padStart(2, '0');
     const thisMonth = `${t.slice(0, 8)}${day}`;
     const prev = addMonths(`${t.slice(0, 8)}01`, -1).slice(0, 7);
-    const hasData = db.bookings.some((b) => active(b) && b.date.startsWith(prev)) || db.guests.some((g) => active(g) && g.date.startsWith(prev));
+    const hasData = db.bookings.some((b) => active(b) && b.date.startsWith(prev)) || db.guests.some((g) => active(g) && g.date.startsWith(prev)) || db.groups.some((g) => active(g) && g.date.startsWith(prev));
     const due = hasData && t >= thisMonth && !lastExportOf(prev);
     const next = due || t < thisMonth ? thisMonth : `${addMonths(`${t.slice(0, 8)}01`, 1).slice(0, 8)}${day}`;
     return { due, next, month: prev, label: monthLabel(prev) };
@@ -437,7 +453,7 @@
   async function deleteEmployee(id) {
     const e = db.employees.find((x) => x.id === id);
     if (!e) throw new Error('Person nicht gefunden.');
-    const used = db.bookings.some((b) => b.employee_id === id) || db.guests.some((g) => g.host_employee_id === id);
+    const used = db.bookings.some((b) => b.employee_id === id) || db.guests.some((g) => g.host_employee_id === id) || db.groups.some((g) => g.host_employee_id === id);
     if (used) Object.assign(e, { is_active: 0, pin_hash: null, deleted: true });
     else db.employees = db.employees.filter((x) => x.id !== id);
     audit('Admin', 'employee_deleted', { name: `${e.first_name} ${e.last_name}`, nr: e.staff_number, buchungen_bleiben: used || undefined });
@@ -500,7 +516,7 @@
     await load();
     // Tablet
     if (path === 'kiosk/config') {
-      return json({ sounds: db.settings.sounds_enabled !== '0', local: true, employees: db.employees.filter((e) => e.is_active && e.pin_hash).length, exportDue: exportStatus().due });
+      return json({ sounds: db.settings.sounds_enabled !== '0', local: true, groups: true, employees: db.employees.filter((e) => e.is_active && e.pin_hash).length, exportDue: exportStatus().due });
     }
     if (path === 'kiosk/ping') return json({ ok: true });
     if (path === 'kiosk/offline-sync') return json({ ok: true, results: [] });
@@ -535,6 +551,22 @@
       guestSessions.delete(body.token);
       await save();
       return json({ ok: true, firstName: emp(s.employeeId).first_name, guestCount: names.length, selfBooked, payingCompany: company, reason, guests: names });
+    }
+
+    if (path === 'kiosk/group/complete') {
+      const s = guestSessions.get(body.token);
+      if (!s || Date.now() - s.at > 10 * 60 * 1000) return json(fail('session_expired'));
+      const company = clean(body.payingCompany);
+      if (!db.settings.paying_companies.includes(company)) return json(fail('invalid', { field: 'payingCompany' }));
+      const groupName = clean(body.groupName, 120);
+      const count = Number(body.count);
+      if (!groupName || !Number.isInteger(count) || count < 1 || count > 500) return json(fail('invalid'));
+      const note = clean(body.note, 500);
+      const { date, time } = nowParts();
+      db.groups.push({ id: db.nextGroupId++, host_employee_id: s.employeeId, date, time, paying_company: company, group_name: groupName, count, note, source: 'kiosk', cancelled_at: null });
+      guestSessions.delete(body.token);
+      await save();
+      return json({ ok: true, firstName: emp(s.employeeId).first_name, groupName, count, note, payingCompany: company });
     }
 
     if (path === 'privacy') {
@@ -595,7 +627,7 @@
       const inRange = (x) => !x.cancelled_at && x.date >= from && x.date <= t;
       const ex = exportStatus();
       return json({
-        ok: true, periodFrom: from, meals: db.bookings.filter(inRange).length, guests: db.guests.filter(inRange).length,
+        ok: true, periodFrom: from, meals: db.bookings.filter(inRange).length, guests: db.guests.filter(inRange).length, groupMeals: db.groups.filter(inRange).reduce((n, g) => n + g.count, 0),
         sync: { at: db.settings.last_import_at, status: 'ok', error: '' },
         lastExport: db.exports[db.exports.length - 1] || null, nextSend: ex.next, exportDue: ex.due, dueLabel: ex.label, mock: false,
         employees: db.employees.filter((e) => e.is_active && e.pin_hash).length, importFile: db.settings.last_import_file,
@@ -618,13 +650,19 @@
       const q = clean(query.get('q')).toLowerCase();
       const match = (e, extra = '') => (!company || e.company_id === company) && (!q || `${e.first_name} ${e.last_name} ${e.last_name} ${e.first_name} ${e.staff_number} ${extra}`.toLowerCase().includes(q));
       let rows = [];
-      if (type !== 'guest') {
+      if (type === 'all' || type === 'meal') {
         rows = rows.concat(db.bookings.filter((b) => b.date >= from && b.date <= to && match(emp(b.employee_id))).map((b) => {
           const e = emp(b.employee_id);
           return { kind: 'meal', id: b.id, date: b.date, time: b.time, staff_number: e.staff_number, first_name: e.first_name, last_name: e.last_name, company: companyName(e), punch_checked: 1, source: b.source, comment: b.comment, cancelled_at: b.cancelled_at, cancelled_by: b.cancelled_by, cancel_comment: b.cancel_comment };
         }));
       }
-      if (type !== 'meal') {
+      if (type === 'all' || type === 'group') {
+        rows = rows.concat(db.groups.filter((g) => g.date >= from && g.date <= to && match(emp(g.host_employee_id), `${g.group_name} ${g.note || ''}`)).map((g) => {
+          const e = emp(g.host_employee_id);
+          return { kind: 'group', id: g.id, date: g.date, time: g.time, staff_number: e.staff_number, first_name: e.first_name, last_name: e.last_name, company: companyName(e), group_name: g.group_name, count: g.count, note: g.note, paying_company: g.paying_company, punch_checked: 1, source: g.source, cancelled_at: g.cancelled_at, cancelled_by: g.cancelled_by, cancel_comment: g.cancel_comment };
+        }));
+      }
+      if (type === 'all' || type === 'guest') {
         rows = rows.concat(db.guests.filter((g) => g.date >= from && g.date <= to && match(emp(g.host_employee_id), g.guest_name)).map((g) => {
           const e = emp(g.host_employee_id);
           return { kind: 'guest', id: g.id, date: g.date, time: g.time, staff_number: e.staff_number, first_name: e.first_name, last_name: e.last_name, company: companyName(e), guest_name: g.guest_name, paying_company: g.paying_company, reason: g.reason, punch_checked: 1, source: g.source, cancelled_at: g.cancelled_at, cancelled_by: g.cancelled_by, cancel_comment: g.cancel_comment };
@@ -646,14 +684,14 @@
       await save();
       return json({ ok: true });
     }
-    const m = path.match(/^admin\/(bookings|guests)\/(\d+)\/cancel$/);
+    const m = path.match(/^admin\/(bookings|guests|groups)\/(\d+)\/cancel$/);
     if (m) {
       const comment = clean(body.comment);
       if (!comment) return bad('Bitte einen Kommentar angeben.');
       const row = db[m[1]].find((x) => x.id === Number(m[2]));
       if (!row || row.cancelled_at) return bad('Eintrag nicht gefunden oder bereits storniert.');
       Object.assign(row, { cancelled_at: nowTs(), cancelled_by: me.email, cancel_comment: comment });
-      audit(me.email, m[1] === 'bookings' ? 'booking_cancelled' : 'guest_cancelled', { id: row.id, date: row.date, comment });
+      audit(me.email, { bookings: 'booking_cancelled', guests: 'guest_cancelled', groups: 'group_cancelled' }[m[1]], { id: row.id, date: row.date, comment });
       await save();
       return json({ ok: true });
     }
@@ -728,7 +766,7 @@
       await guard();
       let from; let to; let name;
       if (key === 'all') {
-        from = [...db.bookings, ...db.guests].filter(active).map((x) => x.date).sort()[0];
+        from = [...db.bookings, ...db.guests, ...db.groups].filter(active).map((x) => x.date).sort()[0];
         to = today();
         if (!from) return { empty: true, message: 'Es sind keine Buchungen gespeichert.' };
         name = `Kantine_alle_Daten_bis_${to}.xlsx`;
@@ -767,8 +805,8 @@
     resetBookings: (pin) => serial(async () => {
       await guard();
       if ((await pbkdf2(String(pin || ''), db.admin.salt)) !== db.admin.hash) throw new Error('Admin-PIN falsch.');
-      const counts = { essen: db.bookings.length, gaeste: db.guests.length, exporte: db.exports.length };
-      db.bookings = []; db.guests = []; db.exports = [];
+      const counts = { essen: db.bookings.length, gaeste: db.guests.length, gruppen: db.groups.length, exporte: db.exports.length };
+      db.bookings = []; db.guests = []; db.groups = []; db.exports = [];
       db.employees = db.employees.filter((e) => !e.deleted);
       audit('Admin', 'bookings_reset', counts);
       await save();

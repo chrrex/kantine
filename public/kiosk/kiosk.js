@@ -2,7 +2,7 @@
 (() => {
   const app = document.getElementById('app');
   const $ = (id) => document.getElementById(id);
-  const screens = { pin: $('screen-pin'), result: $('screen-result'), guest: $('screen-guest'), privacy: $('screen-privacy') };
+  const screens = { pin: $('screen-pin'), result: $('screen-result'), guest: $('screen-guest'), group: $('screen-group'), privacy: $('screen-privacy') };
 
   const MAX_PIN = 12;
   const MIN_DOTS = 4;
@@ -26,6 +26,7 @@
     network: ['Keine Verbindung', 'Bitte versuche es gleich noch einmal.'],
     kiosk_not_authorized: ['Tablet nicht freigeschaltet', 'Bitte wende dich an HR.'],
     offline_guest: ['Keine WLAN-Verbindung', 'Gäste einladen geht nur mit Verbindung. Bitte später noch einmal versuchen.'],
+    offline_group: ['Keine WLAN-Verbindung', 'Gruppen anmelden geht nur mit Verbindung. Bitte später noch einmal versuchen.'],
     offline_unavailable: ['Keine WLAN-Verbindung', 'Buchen ist gerade nicht möglich. Bitte später noch einmal versuchen.'],
     offline_full: ['Speicher voll', 'Zu viele Buchungen ohne Verbindung. Bitte HR informieren.'],
   };
@@ -142,9 +143,9 @@
     show('pin');
   }
 
-  function startGuestPin() {
-    state.mode = 'guest';
-    app.dataset.mode = 'guest';
+  function startGuestPin(mode = 'guest') {
+    state.mode = mode;
+    app.dataset.mode = mode;
     resetPin();
     show('pin');
   }
@@ -161,13 +162,15 @@
       if (!result.ok) return showError(result);
       if (state.mode === 'meal') {
         showSuccess(`Guten Appetit, ${result.firstName}!`, `Dein Mittagessen ist gebucht · ${result.time} Uhr`);
+      } else if (state.mode === 'group') {
+        openGroupForm(result);
       } else {
         openGuestForm(result);
       }
     } catch (err) {
       if (err instanceof OfflineError) {
         setOnline(false);
-        if (state.mode !== 'meal') showError({ code: 'offline_guest' });
+        if (state.mode !== 'meal') showError({ code: state.mode === 'group' ? 'offline_group' : 'offline_guest' });
         else await bookOffline(pin);
       } else {
         showError({ code: 'network' });
@@ -340,7 +343,7 @@
   }
 
   // ---------- Gäste-Formular ----------
-  function chip(label, group) {
+  function chip(label, group, onPick = validateGuestForm) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'chip';
@@ -348,7 +351,7 @@
     b.setAttribute('aria-pressed', 'false');
     b.addEventListener('click', () => {
       for (const c of group.querySelectorAll('.chip')) c.setAttribute('aria-pressed', c === b ? 'true' : 'false');
-      validateGuestForm();
+      onPick();
     });
     return b;
   }
@@ -472,6 +475,68 @@
     }
   }
 
+  // ---------- Gruppen-Formular ----------
+  const groupCount = () => { const n = Number($('group-count').value); return Number.isInteger(n) ? n : 0; };
+  function validateGroupForm() {
+    const n = groupCount();
+    const valid = selected($('group-company-chips')) && $('group-name').value.trim() && n >= 1 && n <= 500;
+    $('group-submit').disabled = !valid || state.busy;
+    $('group-submit-label').textContent = n >= 1 ? `${n} Essen buchen` : 'Buchen';
+    setTimer('formIdle', FORM_IDLE_MS, goHome);
+  }
+  function stepGroup(delta) {
+    const n = Math.min(500, Math.max(1, (groupCount() || 0) + delta));
+    $('group-count').value = String(n);
+    validateGroupForm();
+  }
+  function openGroupForm(data) {
+    state.guest = data;
+    $('group-host-name').textContent = `${data.host.firstName} ${data.host.lastName}`.trim();
+    const companies = $('group-company-chips');
+    companies.replaceChildren(...data.payingCompanies.map((c) => chip(c, companies, validateGroupForm)));
+    if (!data.payingCompanies.length) {
+      const p = document.createElement('p'); p.className = 'empty-hint';
+      p.textContent = 'Noch keine Firmen hinterlegt – bitte HR informieren.';
+      companies.append(p);
+    }
+    if (data.payingCompanies.length === 1) companies.firstChild.setAttribute('aria-pressed', 'true');
+    $('group-name').value = '';
+    $('group-note').value = '';
+    $('group-count').value = '10';
+    show('group');
+    validateGroupForm();
+  }
+  async function submitGroup() {
+    if (state.busy || !state.guest) return;
+    state.busy = true;
+    $('group-submit').disabled = true;
+    try {
+      const result = await api('/api/kiosk/group/complete', {
+        token: state.guest.token,
+        payingCompany: selected($('group-company-chips')),
+        groupName: $('group-name').value,
+        count: groupCount(),
+        note: $('group-note').value,
+      });
+      if (!result.ok) {
+        state.busy = false;
+        if (result.code === 'invalid') { validateGroupForm(); soundError(); return; }
+        return showError(result);
+      }
+      showSuccess(`${result.count} Essen für die Gruppe gebucht`, `Danke, ${result.firstName}!`, [
+        ['Gruppe', result.groupName],
+        ['Zahlende Firma', result.payingCompany],
+        ...(result.note ? [['Bemerkung', result.note]] : []),
+      ]);
+    } catch {
+      showError({ code: 'network' });
+    } finally {
+      state.busy = false;
+    }
+  }
+  for (const id of ['group-name', 'group-note', 'group-count']) $(id).addEventListener('input', validateGroupForm);
+  $('group-form').addEventListener('submit', (e) => e.preventDefault());
+
   // ---------- Datenschutzhinweise ----------
   let privacyLoaded = false;
   async function openPrivacy() {
@@ -501,7 +566,11 @@
     switch (t.dataset.action) {
       case 'delete': return deleteDigit();
       case 'submit': return submitPin();
-      case 'guest': return online ? startGuestPin() : showError({ code: 'offline_guest' });
+      case 'guest': return online ? startGuestPin('guest') : showError({ code: 'offline_guest' });
+      case 'group': return online ? startGuestPin('group') : showError({ code: 'offline_group' });
+      case 'group-minus': return stepGroup(-1);
+      case 'group-plus': return stepGroup(1);
+      case 'submit-group': return submitGroup();
       case 'cancel': return goHome();
       case 'home': return goHome();
       case 'privacy': return openPrivacy();
@@ -530,6 +599,7 @@
       if (!res.ok) return;
       const cfg = await res.json();
       soundsEnabled = cfg.sounds !== false;
+      $('group-button').hidden = !cfg.groups;
       if (cfg.offlineKey) store.set(KEY_KEY, cfg.offlineKey);
       setOnline(true);
     } catch {
